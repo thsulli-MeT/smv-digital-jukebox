@@ -1,106 +1,60 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>sMV Digital Jukebox (Prototype)</title>
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" />
+<title>sMV short Music Videos – Digital Jukebox</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+body { margin:0; font-family: Arial, sans-serif; background:#0b0b0b; color:#fff; }
+header { padding:20px; background:#111; display:flex; align-items:center; justify-content:space-between; }
+header h1 { margin:0; font-size:24px; }
+nav button {
+  margin-right:10px;
+  padding:8px 14px;
+  background:#222;
+  color:#fff;
+  border:1px solid #333;
+  border-radius:6px;
+  cursor:pointer;
+}
+nav button:hover { background:#444; }
+main { display:grid; grid-template-columns: 2fr 1fr; gap:16px; padding:16px; }
+.playerWrap { aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden; }
+.playerWrap iframe { width:100%; height:100%; border:0; }
+.library { overflow-y:auto; max-height:70vh; }
+.tile { display:flex; align-items:center; margin-bottom:10px; cursor:pointer; }
+.tile img { width:120px; border-radius:8px; margin-right:10px; }
+footer { padding:12px; text-align:center; font-size:14px; color:#aaa; }
+</style>
 </head>
 <body>
-  <div class="page">
-    <!-- TOP BANNER -->
-    <header class="banner">
-      <img class="bannerBg" src="smv_bw.png" alt="sMV" />
-      <div class="bannerOverlay">
-        <div class="bannerTitleWrap">
-          <div class="bannerTitle">DIGITAL JUKEBOX</div>
-          <canvas id="eqCanvas" class="eqCanvas"></canvas>
-        </div>
 
-        <nav class="filters" aria-label="Playlists">
-          <button class="pill isActive" data-filter="all">ALL</button>
-          <button class="pill" data-filter="karaoke">Karaoke Star</button>
-          <button class="pill" data-filter="power">Power Station</button>
-          <button class="pill" data-filter="new">New Drops</button>
-          <button class="pill" data-filter="live">Live / Radio</button>
-        </nav>
-      </div>
-    </header>
+<header>
+  <h1>sMV short Music Videos</h1>
+  <nav>
+    <button onclick="loadPlaylist('catalog')">Catalog</button>
+    <button onclick="loadPlaylist('latest')">Latest Alternatives</button>
+    <button onclick="loadPlaylist('altrock')">Alt Rock</button>
+    <button onclick="loadPlaylist('althiphop')">Alt Hip Hop</button>
+    <button onclick="loadPlaylist('power')">Power Station</button>
+  </nav>
+</header>
 
-    <!-- MAIN GRID -->
-    <main class="grid">
-      <!-- LEFT: promo / future widgets -->
-      <aside class="leftRail">
-        <div class="card">
-          <div class="cardTitle">Featured</div>
-          <div class="cardBody">
-            <div class="placeholder">Drop promos / ads here</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="cardTitle">Now Building</div>
-          <div class="cardBody">
-            <img class="mockup" src="jukebox_mockup.jpg" alt="Mockup" />
-          </div>
-        </div>
-      </aside>
-
-      <!-- CENTER: PLAYER + RECORD -->
-      <section class="centerStage">
-        <div class="playerCard">
-          <div class="playerHeader">
-            <div class="nowPlaying">
-              <div class="npLabel">Now Playing</div>
-              <div class="npTitle" id="nowPlayingTitle">—</div>
-            </div>
-            <button class="actionBtn" id="openOnYouTubeBtn" title="Open on YouTube">Open</button>
-          </div>
-
-          <div class="playerWrap">
-            <div id="ytPlayer"></div>
-          </div>
-
-          <div class="playerFooter">
-            <div class="hint" id="statusHint">Pick a song on the right to load it here.</div>
-          </div>
-        </div>
-
-        <div class="turntableCard">
-          <div class="turntableLeft">
-            <div class="turntableTitle">Turntable</div>
-            <div class="turntableHint">Click the record to play/pause. It spins when the video is playing.</div>
-          </div>
-
-          <div class="turntableRight">
-            <button class="record" id="recordBtn" aria-label="Play/Pause">
-              <div class="recordInner">
-                <img src="power_station.png" alt="Power Station" class="recordLabel" />
-              </div>
-            </button>
-            <button class="powerBtn" id="powerStationBtn" title="Load Power Station playlist in the main player">
-              Power Station
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- RIGHT: LIBRARY -->
-      <aside class="rightRail">
-        <div class="libraryHeader">
-          <div class="libraryTitle">Library</div>
-          <input id="searchInput" class="search" type="search" placeholder="Search songs…" />
-        </div>
-        <div class="library" id="videoLibrary" role="list"></div>
-      </aside>
-    </main>
-
-    <footer class="footer">
-      <div class="footerText">Prototype v2 • sMV Digital Jukebox • Powered by your YouTube library</div>
-    </footer>
+<main>
+  <div class="playerWrap">
+    <iframe id="ytPlayer"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen></iframe>
   </div>
 
-  <!-- YouTube IFrame API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="app.js"></script>
+  <div class="library" id="library"></div>
+</main>
+
+<footer>
+  Digital Jukebox • curated by Me T • sMV
+</footer>
+
+<script src="app.js"></script>
 </body>
 </html>
