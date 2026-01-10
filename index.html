@@ -1,1 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>sMV Digital Jukebox (Prototype)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <!-- TOP BANNER -->
+    <header class="banner">
+      <img class="bannerBg" src="smv_bw.png" alt="sMV" />
+      <div class="bannerOverlay">
+        <div class="bannerTitleWrap">
+          <div class="bannerTitle">DIGITAL JUKEBOX</div>
+          <canvas id="eqCanvas" class="eqCanvas"></canvas>
+        </div>
 
+        <nav class="filters" aria-label="Playlists">
+          <button class="pill isActive" data-filter="all">ALL</button>
+          <button class="pill" data-filter="karaoke">Karaoke Star</button>
+          <button class="pill" data-filter="power">Power Station</button>
+          <button class="pill" data-filter="new">New Drops</button>
+          <button class="pill" data-filter="live">Live / Radio</button>
+        </nav>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="grid">
+      <!-- LEFT: promo / future widgets -->
+      <aside class="leftRail">
+        <div class="card">
+          <div class="cardTitle">Featured</div>
+          <div class="cardBody">
+            <div class="placeholder">Drop promos / ads here</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="cardTitle">Now Building</div>
+          <div class="cardBody">
+            <img class="mockup" src="jukebox_mockup.jpg" alt="Mockup" />
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: PLAYER + RECORD -->
+      <section class="centerStage">
+        <div class="playerCard">
+          <div class="playerHeader">
+            <div class="nowPlaying">
+              <div class="npLabel">Now Playing</div>
+              <div class="npTitle" id="nowPlayingTitle">—</div>
+            </div>
+            <button class="actionBtn" id="openOnYouTubeBtn" title="Open on YouTube">Open</button>
+          </div>
+
+          <div class="playerWrap">
+            <div id="ytPlayer"></div>
+          </div>
+
+          <div class="playerFooter">
+            <div class="hint" id="statusHint">Pick a song on the right to load it here.</div>
+          </div>
+        </div>
+
+        <div class="turntableCard">
+          <div class="turntableLeft">
+            <div class="turntableTitle">Turntable</div>
+            <div class="turntableHint">Click the record to play/pause. It spins when the video is playing.</div>
+          </div>
+
+          <div class="turntableRight">
+            <button class="record" id="recordBtn" aria-label="Play/Pause">
+              <div class="recordInner">
+                <img src="power_station.png" alt="Power Station" class="recordLabel" />
+              </div>
+            </button>
+            <button class="powerBtn" id="powerStationBtn" title="Load Power Station playlist in the main player">
+              Power Station
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: LIBRARY -->
+      <aside class="rightRail">
+        <div class="libraryHeader">
+          <div class="libraryTitle">Library</div>
+          <input id="searchInput" class="search" type="search" placeholder="Search songs…" />
+        </div>
+        <div class="library" id="videoLibrary" role="list"></div>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <div class="footerText">Prototype v2 • sMV Digital Jukebox • Powered by your YouTube library</div>
+    </footer>
+  </div>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>
