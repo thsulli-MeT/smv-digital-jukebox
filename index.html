@@ -6,366 +6,318 @@
   <title>sMV Digital Jukebox</title>
   <style>
     :root{
-      --bg:#06060a;
-      --panel:#0f111a;
-      --panel2:#151a24;
-      --border:#2a2f3f;
-      --text:#e9ecff;
-      --muted:#b6bddb;
-      --accent:#a400ff;
-      --shadow: 0 12px 28px rgba(0,0,0,.45);
+      --bg:#0b0f18;
+      --panel:#101828;
+      --panel2:#0f1626;
+      --stroke:rgba(255,255,255,.12);
+      --stroke2:rgba(255,255,255,.18);
+      --accent:#a855f7;
+      --txt:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.68);
     }
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 600px at 15% 0%, rgba(164,0,255,.22), transparent 55%),
-                  radial-gradient(900px 500px at 85% 15%, rgba(0,170,255,.18), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-    }
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .banner{
+    body{margin:0;background:radial-gradient(1200px 600px at 20% 0%, rgba(168,85,247,.18), transparent 60%), var(--bg); color:var(--txt); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+
+    .wrap{max-width:1500px;margin:0 auto;padding:12px;}
+
+    /* HEADER */
+    .header{
       display:grid;
-      grid-template-columns: 210px 1fr 240px;
-      gap:14px;
+      grid-template-columns: 220px 1fr 300px;
+      gap:12px;
       align-items:stretch;
-      background: linear-gradient(90deg, #ff3b3b, #ff8a00, #f7ff00, #24ff5a, #29b6ff, #6b4bff);
-      border-radius:14px;
-      padding:14px;
-      box-shadow: var(--shadow);
-      border:1px solid rgba(255,255,255,.12);
-      position:relative;
-      overflow:hidden;
     }
-    .banner::after{
-      content:"";
-      position:absolute; inset:0;
-      background: rgba(0,0,0,.18);
-      pointer-events:none;
-    }
-    .brandCard{
-      position:relative;
-      z-index:1;
+    .brand{
+      background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.06));
+      border:1px solid var(--stroke);
+      border-radius:16px;
       display:flex;
       align-items:center;
       justify-content:center;
+      padding:10px;
+      overflow:hidden;
     }
-    .brandCard img{
-      width:200px; height:auto;
-      filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
-      transform: rotate(-12deg);
-    }
+    .brand img{width:100%;height:auto;transform:rotate(-12deg);filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));}
 
-    .titleBlock{
+    .banner{
       position:relative;
-      z-index:1;
-      padding:4px 10px;
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      overflow:hidden;
+      background:linear-gradient(90deg, #ff4d4d, #ffb84d, #79ff6b, #54d7ff, #8c7bff, #ff4db8);
+      padding:14px 16px 12px;
       display:flex;
       flex-direction:column;
       justify-content:center;
-      min-height:140px;
+      min-height:156px;
     }
     .title{
       font-weight:900;
       letter-spacing:.02em;
-      font-size:48px;
+      font-size:52px;
       line-height:1;
-      margin:0 0 8px 0;
+      margin:0;
       text-transform:uppercase;
-      text-shadow: 0 8px 18px rgba(0,0,0,.45);
+      text-shadow:0 6px 18px rgba(0,0,0,.35);
     }
-    .hint{
-      margin:0 0 10px 0;
-      color:#0a0a0a;
-      font-weight:800;
-      font-size:16px;
-      text-transform:uppercase;
+    .subtitle{
+      margin:8px 0 10px;
+      color:rgba(0,0,0,.86);
+      font-weight:900;
       letter-spacing:.06em;
-      text-shadow: 0 2px 0 rgba(255,255,255,.20);
+      text-transform:uppercase;
+      text-shadow:0 2px 10px rgba(255,255,255,.22);
     }
 
-    /* waveform bar (fake viz) */
-    .waveWrap{
-      margin-top:2px;
-      height:14px;
+    /* fake EQ bar (static pattern but moves L->R) */
+    .eqbar{
+      height:10px;
       border-radius:999px;
-      background: rgba(0,0,0,.35);
-      border: 1px solid rgba(255,255,255,.20);
+      background:rgba(0,0,0,.35);
       overflow:hidden;
+      border:1px solid rgba(0,0,0,.35);
       position:relative;
+      max-width:760px;
     }
-    .wave{
-      position:absolute; inset:0;
+    .eqbar::before{
+      content:"";
+      position:absolute;
+      top:0;left:-40%;
+      width:180%;
+      height:100%;
       background:
         repeating-linear-gradient(90deg,
-          rgba(255,255,255,.95) 0 4px,
-          rgba(255,255,255,0) 4px 8px);
+          rgba(255,255,255,.95) 0 6px,
+          rgba(255,255,255,.12) 6px 10px);
       opacity:.9;
-      transform: translateX(-40%);
-      animation: waveMove 2.6s linear infinite;
-      mask: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+      transform:skewX(-10deg);
+      animation:eqMove 3.2s linear infinite;
     }
-    @keyframes waveMove{
-      0%{transform: translateX(-45%)}
-      100%{transform: translateX(45%)}
-    }
+    @keyframes eqMove{from{transform:translateX(0) skewX(-10deg);}to{transform:translateX(40%) skewX(-10deg);}}
 
-    .recordZone{
-      position:relative;
-      z-index:1;
+    .recordWrap{
+      border-radius:16px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(135deg, rgba(168,85,247,.18), rgba(255,255,255,.05));
+      padding:12px;
       display:flex;
+      flex-direction:column;
+      gap:10px;
       align-items:center;
       justify-content:center;
+      min-height:156px;
     }
     .record{
       width:210px;
-      aspect-ratio:1/1;
+      height:210px;
       border-radius:50%;
-      background:
-        radial-gradient(circle at 50% 50%, rgba(0,0,0,.0) 0 30%, rgba(0,0,0,.85) 31% 100%),
-        radial-gradient(circle at 50% 50%, #333 0 12%, #111 13% 100%);
-      border:6px solid rgba(0,0,0,.55);
-      box-shadow: 0 18px 30px rgba(0,0,0,.55);
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.18), rgba(255,255,255,.06) 38%, rgba(0,0,0,.65) 78%, rgba(0,0,0,.92));
+      border:10px solid rgba(0,0,0,.55);
+      box-shadow:0 18px 40px rgba(0,0,0,.55);
+      position:relative;
       cursor:pointer;
+      display:grid;
+      place-items:center;
       user-select:none;
-      overflow:hidden;
+    }
+    .record::after{
+      content:"";
+      position:absolute;
+      inset:22px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
     }
     .record img{
-      width:72%;
-      height:72%;
+      width:110px;
+      height:110px;
       border-radius:50%;
-      border:4px solid rgba(0,0,0,.55);
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,.08);
-      background: #6b00ff;
+      border:6px solid rgba(0,0,0,.55);
+      background:#2b1340;
     }
-    .record.spinning{
-      animation: spin 2.2s linear infinite;
-    }
-    @keyframes spin{
-      from{transform: rotate(0deg)}
-      to{transform: rotate(360deg)}
-    }
+    .spinning{animation:spin 2.2s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
 
-    .navRow{
-      margin-top:10px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .pill{
-      background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
-      border:1px solid rgba(255,255,255,.18);
-      color:#0c0c10;
-      font-weight:900;
+    .powerBtn{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background:rgba(0,0,0,.35);
+      color:var(--txt);
       padding:10px 12px;
-      border-radius:10px;
-      cursor:pointer;
+      font-weight:800;
       text-transform:uppercase;
       letter-spacing:.06em;
-      box-shadow: 0 8px 18px rgba(0,0,0,.25);
+      cursor:pointer;
     }
-    .pill.active{
-      outline: 2px solid rgba(164,0,255,.8);
-      box-shadow: 0 0 0 4px rgba(164,0,255,.18);
-      background: #ffffff;
-    }
+    .powerBtn:hover{border-color:var(--stroke2);}
 
+    /* BUTTON ROW */
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      padding:10px 0 12px;
+    }
+    .chip{
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background:rgba(255,255,255,.06);
+      color:var(--txt);
+      padding:10px 12px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      cursor:pointer;
+    }
+    .chip.active{outline:2px solid rgba(168,85,247,.55); background:rgba(168,85,247,.16);}
+
+    /* MAIN GRID */
     .grid{
-      margin-top:12px;
       display:grid;
-      grid-template-columns: 1fr 360px 300px;
+      grid-template-columns: 2.1fr 1.05fr 0.85fr;
       gap:12px;
       align-items:start;
     }
 
     .panel{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:14px;
-      box-shadow: var(--shadow);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--stroke);
+      border-radius:16px;
       overflow:hidden;
     }
 
-    .playerPanel{padding:12px}
-    .playerFrame{
-      width:100%;
-      aspect-ratio:16/9;
-      border-radius:12px;
-      overflow:hidden;
-      border:1px solid rgba(255,255,255,.10);
-      background:#000;
-    }
-    .playerFrame #player{width:100%; height:100%;}
-    .now{
-      margin-top:10px;
-      font-weight:800;
-      color:var(--text);
-      letter-spacing:.02em;
-    }
-    .bottomAd{
-      margin-top:10px;
-      border-radius:12px;
-      height:110px;
-      background: rgba(164,0,255,.22);
-      border: 1px dashed rgba(255,255,255,.22);
+    .playerPanel{position:relative; min-height:560px;}
+    .playerHeader{
       display:flex;
       align-items:center;
-      justify-content:center;
-      color: rgba(255,255,255,.75);
-      font-weight:800;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-    }
-
-    .libraryPanel{padding:12px}
-    .libraryHeader{
-      font-weight:900;
-      letter-spacing:.06em;
-      color:#ffffff;
-      text-transform:uppercase;
-      margin:0 0 10px 0;
-    }
-    #library{
-      display:flex;
-      flex-direction:column;
+      justify-content:space-between;
       gap:10px;
-      max-height:calc(100vh - 360px);
-      overflow:auto;
-      padding-right:4px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--stroke);
+      background:rgba(0,0,0,.22);
     }
-    .track{
+    .nowPlaying{font-weight:800;color:var(--txt)}
+    .hint{color:var(--muted); font-weight:600; font-size:13px;}
+
+    .playerStage{position:relative; aspect-ratio: 16 / 9; background:#000;}
+    #ytPlayer{position:absolute; inset:0; width:100%; height:100%; border:0;}
+
+    /* click overlay for user-gesture play */
+    .tapLayer{
+      position:absolute; inset:0;
       display:grid;
-      grid-template-columns: 96px 1fr;
-      gap:10px;
-      align-items:center;
-      background: rgba(8,10,16,.70);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:12px;
-      padding:10px;
+      place-items:center;
+      text-align:center;
+      padding:20px;
       cursor:pointer;
-      text-align:left;
-      color:var(--text);
+      background:radial-gradient(600px 240px at 50% 40%, rgba(168,85,247,.22), rgba(0,0,0,.15) 55%, rgba(0,0,0,.02));
+      transition:opacity .25s ease;
     }
-    .track:hover{border-color: rgba(164,0,255,.40)}
-    .track.selected{
-      border-color: rgba(164,0,255,.95);
-      box-shadow: 0 0 0 3px rgba(164,0,255,.18);
+    .tapLayer.hidden{opacity:0; pointer-events:none;}
+    .tapCard{
+      max-width:520px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.42);
+      padding:18px 18px 14px;
+      box-shadow:0 20px 50px rgba(0,0,0,.55);
     }
-    .thumb{
-      width:96px;
-      height:54px;
-      border-radius:10px;
-      object-fit:cover;
-      background:#111;
-      border:1px solid rgba(255,255,255,.12);
-    }
-    .title{
-      font-size:14px;
-      font-weight:800;
-      color:var(--text);
-      text-transform:none;
-      letter-spacing:0;
-      text-shadow:none;
-    }
+    .tapCard .big{font-size:22px;font-weight:900; letter-spacing:.04em; text-transform:uppercase;}
+    .tapCard .small{margin-top:6px;color:var(--muted);font-weight:600;}
 
-    .adsPanel{padding:12px}
-    .adsHeader{
-      font-weight:900;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      margin:0 0 10px 0;
-      color:rgba(255,255,255,.92);
-    }
-    .adBox{
-      height:180px;
-      border-radius:12px;
-      background: rgba(164,0,255,.22);
-      border: 1px dashed rgba(255,255,255,.22);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color: rgba(255,255,255,.75);
-      font-weight:800;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      margin-bottom:10px;
-    }
+    .belowAd{padding:12px; min-height:120px; display:grid; place-items:center; color:rgba(255,255,255,.75); font-weight:800;}
 
-    /* small screens */
+    .libraryPanel{min-height:692px; display:flex; flex-direction:column;}
+    .libHeader{padding:10px 12px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; border-bottom:1px solid var(--stroke);}
+    .library{overflow:auto; padding:10px; display:flex; flex-direction:column; gap:10px; max-height:640px;}
+    .tile{display:flex; gap:10px; align-items:center; padding:10px; border-radius:14px; border:1px solid rgba(255,255,255,.10); background:rgba(0,0,0,.18); cursor:pointer;}
+    .tile:hover{border-color:rgba(255,255,255,.22)}
+    .tile.active{outline:2px solid rgba(168,85,247,.55)}
+    .tile img{width:96px; height:54px; object-fit:cover; border-radius:10px;}
+    .tile .t{font-weight:800; line-height:1.2;}
+
+    .adsPanel{min-height:692px; display:flex; flex-direction:column; gap:12px; padding:12px;}
+    .adBox{border:1px dashed rgba(255,255,255,.20); border-radius:16px; background:rgba(168,85,247,.08); min-height:180px; display:grid; place-items:center; color:rgba(255,255,255,.75); font-weight:900; text-transform:uppercase; letter-spacing:.08em;}
+
+    /* mobile */
     @media (max-width: 1100px){
-      .banner{grid-template-columns: 170px 1fr 200px}
-      .title{font-size:40px}
-      .grid{grid-template-columns: 1fr}
-      #library{max-height: unset}
-      .record{width:180px}
+      .header{grid-template-columns: 180px 1fr; grid-template-rows:auto auto;}
+      .recordWrap{grid-column: 1 / -1; flex-direction:row; justify-content:space-between;}
+      .grid{grid-template-columns: 1fr;}
+      .libraryPanel, .adsPanel{min-height:auto;}
+      .library{max-height:360px;}
     }
-  
-      .tapOverlay{
-        position:absolute;
-        inset:0;
-        z-index:5;
-        cursor:pointer;
-        background:transparent;
-      }
-      /* keep overlay from blocking scroll on library etc. only sits over player */
-
-    </style>
+  </style>
 </head>
 <body>
   <div class="wrap">
 
-    <section class="banner">
-      <div class="brandCard">
-        <img src="smv_bw.png" alt="sMV short music videos">
-      </div>
+    <div class="header">
+      <div class="brand"><img src="smv_bw.png" alt="sMV" /></div>
 
-      <div class="titleBlock">
+      <div class="banner">
         <h1 class="title">DIGITAL JUKEBOX</h1>
-        <p class="hint">Start and stop video — click the record player.</p>
-        <div class="waveWrap" aria-hidden="true">
-          <div class="wave"></div>
-        </div>
-        <div class="navRow" id="playlistButtons"></div>
+        <div class="subtitle">Start and stop video — click the record player.</div>
+        <div class="eqbar" aria-hidden="true"></div>
       </div>
 
-      <div class="recordZone">
-        <div class="record" id="record" title="Click to Play/Pause">
-          <img src="smv_power_station_logo_2.png" alt="Power Station">
+      <div class="recordWrap">
+        <div id="record" class="record" title="Start / Stop">
+          <img src="smv power station logo 2.png" alt="Power Station" />
         </div>
+        <button id="powerBtn" class="powerBtn" type="button">Power Station Mix</button>
       </div>
-    </section>
+    </div>
 
-    <section class="grid">
+    <div class="controls" id="filters">
+      <button class="chip active" data-filter="catalog" type="button">sMV Music Videos</button>
+      <button class="chip" data-filter="alt hip hop" type="button">Alt Hip Hop</button>
+      <button class="chip" data-filter="alt rock" type="button">Alt Rock</button>
+      <button class="chip" data-filter="alt pop" type="button">Alt Pop</button>
+      <button class="chip" data-filter="reggae" type="button">Reggae</button>
+      <button class="chip" data-filter="punk" type="button">Punk Pop</button>
+      <button class="chip" data-filter="edm" type="button">EDM</button>
+      <button class="chip" data-filter="future pop" type="button">Future Pop</button>
+      <button class="chip" data-filter="country" type="button">Country</button>
+      <button class="chip" data-filter="mix" type="button">Mix</button>
+    </div>
+
+    <div class="grid">
       <div class="panel playerPanel">
-        <div class="playerFrame" id="playerFrame">
-          <div id="player"></div>
-          <div class="tapOverlay" id="tapOverlay" title="Tap to start/stop"></div>
+        <div class="playerHeader">
+          <div class="nowPlaying" id="nowPlaying">Now Playing: —</div>
+          <div class="hint">Tip: click anywhere on the video to start/stop</div>
         </div>
-        <div class="now" id="nowPlaying">Now Playing: —</div>
-        <div class="bottomAd">Ad space</div>
+
+        <div class="playerStage" id="playerStage">
+          <div id="ytPlayer"></div>
+          <div id="tapLayer" class="tapLayer">
+            <div class="tapCard">
+              <div class="big">Tap to play</div>
+              <div class="small">Browsers block autoplay. One tap unlocks audio + video.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="belowAd">ad space</div>
       </div>
 
-      <aside class="panel libraryPanel">
-        <div class="libraryHeader">Song Video Library</div>
-        <div id="library"></div>
-      </aside>
+      <div class="panel libraryPanel">
+        <div class="libHeader">Song Video Library</div>
+        <div id="library" class="library"></div>
+      </div>
 
-      <aside class="panel adsPanel">
-        <div class="adsHeader">Ads</div>
-        <div class="adBox">Ad space</div>
-        <div class="adBox">Ad space</div>
-        <div class="adBox">Ad space</div>
-      </aside>
-    </section>
+      <div class="panel adsPanel">
+        <div class="adBox">ad space</div>
+        <div class="adBox">ad space</div>
+        <div class="adBox">ad space</div>
+      </div>
+    </div>
 
   </div>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
