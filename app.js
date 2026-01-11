@@ -1,326 +1,232 @@
-
-/* sMV Digital Jukebox (Gen-3)
-   - Uses SMV_CATALOG from smv_catalog.js
-   - Clean titles
-   - Chunky "wave" bars travel left->right (not audio-derived)
-   - YouTube IFrame API for play/pause control
+/* sMV Digital Jukebox
+   - YouTube IFrame API player
+   - Record click toggles play/pause
+   - Playlist buttons filter the catalog
+   - Auto-plays next track when video ends
 */
 
-const $ = (id) => document.getElementById(id);
-
-const recordEl = $("record");
-const playBtnEl = $("playBtn");
-const nowPlayingEl = $("nowPlaying");
-const gridEl = $("grid");
-const navRowEl = $("navRow");
-const searchEl = $("search");
-const countNoteEl = $("countNote");
-const powerBtn = null;
-const powerCenter = $("powerCenter");
-
-const EQ_BAR_COUNT = 48;
-const EQ_STEP_LEVELS = 7; // chunky
-const EQ_MAX_H = 26;
-
-let eqPhase = 0;
-let eqAnimating = false;
-
-// ---- Title cleanup (display only)
-function cleanTitle(title) {
-  return (title || "")
-    .replace(/\s*#.+$/g, "") // remove hashtags onward
-    .replace(/\s*[-–|]\s*sMV.*$/i, "") // trailing " - sMV ..." or "| sMV ..."
-    .replace(/\s*sMV short Music Videos.*$/i, "")
-    .replace(/\s*Me T x\s*/i, "")
-    .replace(/[“”]/g, '"')
-    .trim();
-}
-
-// ---- Data
-const CATALOG = (typeof SMV_CATALOG !== "undefined" && Array.isArray(SMV_CATALOG)) ? SMV_CATALOG : [];
-// default slices for now (swap these later with real playlist exports)
-const PLAYLISTS = {
-  all: CATALOG,
-  latest: CATALOG.slice(0, 60),
-  altrock: CATALOG.filter(v => /rock/i.test(v.title)).slice(0, 60),
-  althiphop: CATALOG.filter(v => /hip hop|rap/i.test(v.title)).slice(0, 60),
-  power: CATALOG.slice(0, 40),
+const state = {
+  catalog: [],
+  currentList: [],
+  currentIndex: 0,
+  playerReady: false,
+  playing: false,
+  currentFilter: 'catalog'
 };
 
-const NAV = [
-  { key: "all", label: "All" },
-  { key: "latest", label: "Latest" },
-  { key: "altrock", label: "Alt Rock" },
-  { key: "althiphop", label: "Alt Hip Hop" },
-  { key: "power", label: "Power Station" },
-];
+const el = {
+  nowPlaying: document.getElementById('nowTitle'),
+  library: document.getElementById('library'),
+  btnCatalog: document.getElementById('btnCatalog'),
+  btnHipHop: document.getElementById('btnHipHop'),
+  btnRock: document.getElementById('btnRock'),
+  btnPop: document.getElementById('btnPop'),
+  btnPower: document.getElementById('btnPower'),
+  recordBtn: document.getElementById('recordBtn')
+};
 
-let currentIndex = 0;
-let activeKey = "all";
-let activeList = PLAYLISTS[activeKey] || [];
-let activeVideo = null;
+function cleanTitle(t){
+  if(!t) return '';
+  let s = String(t);
+  // remove common suffixes
+  s = s.replace(/\s*#music\s*#musicvideos?.*$/i,'');
+  s = s.replace(/\s*sMV\s*short\s*Music\s*Videos\b.*$/i,'');
+  s = s.replace(/\s*\|\s*sMV\b.*$/i,'');
+  s = s.replace(/[“”]/g,'"');
+  s = s.trim();
+  // remove trailing punctuation
+  s = s.replace(/[\s\-–—:]+$/,'');
+  return s;
+}
 
-let ytPlayer = null;
-let ytReady = false;
-let isPlaying = false;
-
-// ---- EQ bars (left->right wave, chunky steps)
-function initEqBars() {
-  const wrap = $("eqBars");
-  wrap.innerHTML = "";
-  for (let i = 0; i < EQ_BAR_COUNT; i++) {
-    const b = document.createElement("div");
-    b.className = "eqBar";
-    b.style.height = "6px";
-    wrap.appendChild(b);
+async function loadCatalog(){
+  try{
+    const res = await fetch('assets/smv_catalog_clean.json', { cache: 'no-store' });
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.SMV_CATALOG || data.entries || []);
+    state.catalog = (list || []).map(x => ({
+      id: x.id || x.videoId || x.video_id,
+      title: cleanTitle(x.title || x.name || '')
+    })).filter(x => x.id);
+  }catch(err){
+    console.warn('Could not load catalog JSON. Using fallback list.', err);
+    state.catalog = [
+      { title: 'My Archetype', id: 'jT-sSi0qVzA' },
+      { title: 'Leave a Legacy', id: '2HmUn5GlHLY' },
+      { title: "I'm Not a DJ", id: '0FEhI1lvaCM' }
+    ];
   }
 }
 
-function quantize(val, levels) {
-  const step = 1 / (levels - 1);
-  return Math.round(val / step) * step;
+function setActiveButtons(activeBtn){
+  const btns = [el.btnCatalog, el.btnHipHop, el.btnRock, el.btnPop, el.btnPower];
+  btns.forEach(b => b?.classList.remove("active"));
+  if(activeBtn) activeBtn.classList.add("active");
 }
 
-function tickEq() {
-  if (!eqAnimating) return;
-  eqPhase += 0.09; // speed
-  const bars = $("eqBars").children;
-
-  for (let i = 0; i < bars.length; i++) {
-    // traveling wave: phase shifts across index
-    const x = (i / EQ_BAR_COUNT) * Math.PI * 2;
-    const wave = (Math.sin(eqPhase - x * 2.2) + 1) / 2; // 0..1
-    const wobble = (Math.sin(eqPhase * 1.7 + i * 0.35) + 1) / 2;
-    let v = (wave * 0.78 + wobble * 0.22);
-    v = quantize(v, EQ_STEP_LEVELS);
-    const h = 4 + v * (EQ_MAX_H - 4);
-    bars[i].style.height = `${h}px`;
-    bars[i].style.opacity = (0.65 + v * 0.35).toFixed(2);
-  }
-
-  requestAnimationFrame(tickEq);
-}
-
-function setEqAnimating(on) {
-  if (on && !eqAnimating) {
-    eqAnimating = true;
-    requestAnimationFrame(tickEq);
-  } else if (!on) {
-    eqAnimating = false;
-  }
-}
-
-// ---- UI
-function renderNav() {
-  navRowEl.innerHTML = "";
-  NAV.forEach(item => {
-    const btn = document.createElement("div");
-    btn.className = "pill" + (item.key === activeKey ? " active" : "");
-    btn.textContent = item.label;
-    btn.onclick = () => { loadPlaylist(item.key); };
-    navRowEl.appendChild(btn);
-  });
-}
-
-function loadPlaylist(key) {
-  activeKey = key;
-
-  // update active pill
-  document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
-  const activeNav = NAV.find(n => n.key === key);
-  if (activeNav) {
-    const pill = Array.from(document.querySelectorAll(".pill")).find(p => p.textContent === activeNav.label);
-    if (pill) pill.classList.add("active");
-  }
-
-  activeList = PLAYLISTS[activeKey] || [];
-  searchEl.value = "";
-  currentIndex = 0;
-  renderGrid(activeList);
-  if (activeList[0]) selectVideo(activeList[0], true);
-}
-
-function thumbUrl(id) {
-  // try maxres first; fall back via onerror handler
-  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-}
-
-function renderGrid(list) {
-  gridEl.innerHTML = "";
-  const q = (searchEl.value || "").trim().toLowerCase();
-
-  const filtered = q
-    ? list.filter(v => cleanTitle(v.title).toLowerCase().includes(q))
-    : list;
-
-  countNoteEl.textContent = `${filtered.length} tracks`;
-
-  filtered.forEach((v, i) => {
-    const tile = document.createElement("div");
-    tile.className = "tile";
-    tile.dataset.id = v.id;
-    const t = cleanTitle(v.title) || "Untitled";
-    tile.innerHTML = `
-      <img class="thumb" src="${thumbUrl(v.id)}" alt="">
-      <div class="tileMeta">
-        <div class="tileTitle">${escapeHtml(t)}</div>
-        <div class="tileHint">Tap to play</div>
-      </div>
-    `;
-
-    const img = tile.querySelector("img");
-    img.onerror = () => {
-      img.onerror = null;
-      img.src = `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`;
-    };
-
-    tile.onclick = () => { currentIndex = i; selectVideo(v, true); };
-    gridEl.appendChild(tile);
-  });
-}
-
-function escapeHtml(str) {
-  return (str || "").replace(/[&<>"']/g, (m) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[m]));
-}
-
-// ---- YouTube IFrame API
-function loadYouTubeAPI() {
-  return new Promise((resolve) => {
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    window.onYouTubeIframeAPIReady = () => resolve();
-    document.head.appendChild(tag);
-  });
-}
-
-function createPlayer(videoId) {
-  if (!window.YT || !YT.Player) return;
-  if (ytPlayer) {
-    ytPlayer.loadVideoById(videoId);
+function applyFilter(kind){
+  // Power Station: we try to surface mixes/episodes from the catalog by keyword.
+  // If you want this button to open a specific YouTube playlist instead,
+  // replace POWER_STATION_URL and uncomment the window.open line.
+  const POWER_STATION_URL = "https://www.youtube.com/@sMVshortMusicVideos";
+  if(kind === 'power'){
+    // window.open(POWER_STATION_URL, '_blank');
+    const powerish = state.catalog.filter(v => /power station|mix|episode|radio/i.test(v.title));
+    const list = powerish.length ? powerish : state.catalog;
+    setList(list);
+    if(list[0]) setPlayerVideo(list[0].id, 0);
+    setActiveButtons(el.btnPower);
     return;
   }
+  state.currentFilter = kind;
 
-  ytPlayer = new YT.Player("ytApiMount", {
-    width: "100%",
-    height: "100%",
-    videoId,
+  let list = [...state.catalog];
+
+  // Very light keyword-based grouping (works immediately, no extra metadata needed).
+  if(kind === 'althiphop'){
+    list = list.filter(v => /hip\s*hop|rap|trap|drill/i.test(v.title));
+  }
+  if(kind === 'altrock'){
+    list = list.filter(v => /rock|guitar|alt\s*rock|punk|metal/i.test(v.title));
+  }
+  if(kind === 'altpop'){
+    list = list.filter(v => /pop|alt\s*pop|dance|club|synth/i.test(v.title));
+  }
+
+  // If a filter returns empty, fall back to full catalog so the UI never looks broken.
+  if(list.length === 0) list = [...state.catalog];
+
+  setList(list);
+}
+
+function setList(list){
+  state.currentList = list;
+  state.currentIndex = 0;
+  renderLibrary();
+  if(state.currentList[0]){
+    loadVideoByIndex(0);
+  }
+}
+
+function thumbUrl(id){
+  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+function renderLibrary(){
+  el.library.innerHTML = '';
+  state.currentList.forEach((v, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile' + (idx === state.currentIndex ? ' active' : '');
+    tile.innerHTML = `
+      <img src="${thumbUrl(v.id)}" alt="${(v.title||'Video').replace(/"/g,'&quot;')}">
+      <div class="t-title">${escapeHtml(v.title || 'Untitled')}</div>
+    `;
+    tile.addEventListener('click', () => loadVideoByIndex(idx));
+    el.library.appendChild(tile);
+  });
+}
+
+function escapeHtml(str){
+  return String(str||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+function loadVideoByIndex(idx){
+  if(!state.currentList[idx]) return;
+  state.currentIndex = idx;
+  renderLibrary();
+
+  const v = state.currentList[idx];
+  el.nowPlaying.textContent = v.title || 'Now Playing';
+
+  if(state.playerReady && window.ytPlayer){
+    window.ytPlayer.loadVideoById(v.id);
+    // start spinning immediately; YT may take a moment to begin
+    setSpinning(true);
+  }else{
+    // If player not ready yet, set initial id to load on ready
+    window.__pendingVideoId = v.id;
+  }
+}
+
+function playNext(){
+  if(state.currentList.length === 0) return;
+  const next = (state.currentIndex + 1) % state.currentList.length;
+  loadVideoByIndex(next);
+}
+
+function setSpinning(on){
+  state.playing = !!on;
+  if(state.playing) el.recordBtn.classList.add('spinning');
+  else el.recordBtn.classList.remove('spinning');
+}
+
+function togglePlayPause(){
+  if(!state.playerReady || !window.ytPlayer) return;
+  const st = window.ytPlayer.getPlayerState?.();
+
+  // 1 = playing, 2 = paused, 5 = video cued
+  if(st === 1){
+    window.ytPlayer.pauseVideo();
+  }else{
+    window.ytPlayer.playVideo();
+  }
+}
+
+// --- YouTube IFrame API ---
+window.onYouTubeIframeAPIReady = function(){
+  window.ytPlayer = new YT.Player('player', {
+    videoId: (state.currentList[0]?.id || window.__pendingVideoId || 'J7jlx50LEj4'),
     playerVars: {
-      autoplay: 1,
       playsinline: 1,
       rel: 0,
-      modestbranding: 1,
-      enablejsapi: 1
+      modestbranding: 1
     },
     events: {
       onReady: () => {
-        ytReady = true;
-        isPlaying = true;
-        recordEl.classList.add("recordSpin");
-          playBtnEl.classList.add("isPlaying");
-        setEqAnimating(true);
+        state.playerReady = true;
+        // If we had a pending id before player was ready
+        if(window.__pendingVideoId){
+          window.ytPlayer.loadVideoById(window.__pendingVideoId);
+          window.__pendingVideoId = null;
+        }
       },
       onStateChange: (e) => {
-        // 1 playing, 2 paused, 0 ended
-        if (e.data === YT.PlayerState.PLAYING) {
-          isPlaying = true;
-          recordEl.classList.add("recordSpin");
-          playBtnEl.classList.add("isPlaying");
-          setEqAnimating(true);
-        }
-        if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
-          isPlaying = false;
-          recordEl.classList.remove("recordSpin");
-          playBtnEl.classList.remove("isPlaying");
-          setEqAnimating(false);
-
-        if (e.data === YT.PlayerState.ENDED) {
-          isPlaying = false;
-          recordEl.classList.remove("recordSpin");
-          playBtnEl.classList.remove("isPlaying");
-          setEqAnimating(false);
+        // 0 ended, 1 playing, 2 paused
+        if(e.data === 1) setSpinning(true);
+        if(e.data === 2) setSpinning(false);
+        if(e.data === 0){
+          setSpinning(false);
           playNext();
-        }
-
         }
       }
     }
   });
-}
+};
 
+// --- Init ---
+(async function init(){
+  await loadCatalog();
+  setList(state.catalog);
 
-function playNext() {
-  if (!activeList || activeList.length === 0) return;
-  const nextIndex = (currentIndex + 1) % activeList.length;
-  const v = activeList[nextIndex];
-  currentIndex = nextIndex;
-  selectVideo(v, true);
-  const tile = document.querySelector(`.tile[data-id="${v.id}"]`);
-  if (tile && tile.scrollIntoView) tile.scrollIntoView({ block: "nearest", behavior: "smooth" });
-}
+  // Buttons
+  el.btnCatalog.addEventListener('click', () => { setActiveButtons(el.btnCatalog); applyFilter('catalog'); });
+  el.btnHipHop.addEventListener('click', () => { setActiveButtons(el.btnHipHop); applyFilter('althiphop'); });
+  el.btnRock.addEventListener('click', () => { setActiveButtons(el.btnRock); applyFilter('altrock'); });
+  el.btnPop.addEventListener('click', () => { setActiveButtons(el.btnPop); applyFilter('altpop'); });
+  el.btnPower.addEventListener('click', () => { setActiveButtons(el.btnPower); applyFilter('power'); });
 
-function selectVideo(v, autoplay = true) {
-  activeVideo = v;
-  const label = cleanTitle(v.title) || "Untitled";
-  nowPlayingEl.textContent = label;
+  // Record toggles playback
+  el.recordBtn.addEventListener('click', togglePlayPause);
 
-  // If API isn't ready yet, we still set activeVideo and let init create it.
-  if (ytReady && ytPlayer) {
-    if (autoplay) ytPlayer.loadVideoById(v.id);
-    else ytPlayer.cueVideoById(v.id);
-  } else {
-    createPlayer(v.id);
-  }
-}
+  // Load YouTube API
+  const tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
 
-// ---- Record control
-recordEl.addEventListener("click", () => {
-  if (!ytPlayer || !ytReady) return;
-  if (isPlaying) {
-    ytPlayer.pauseVideo();
-
-if (powerCenter) {
-  powerCenter.addEventListener("click", (e) => {
-    e.stopPropagation(); // don't toggle play/pause on the record
-    loadPlaylist("power");
-  });
-}
-  } else {
-    ytPlayer.playVideo();
-  }
-});
-// ---- Start/Stop button
-playBtnEl.addEventListener("click", () => {
-  if (!ytPlayer || !ytReady) return;
-  if (isPlaying) ytPlayer.pauseVideo();
-  else ytPlayer.playVideo();
-});
-
-
-// ---- Search
-searchEl.addEventListener("input", () => renderGrid(activeList));
-
-
-// ---- Init
-(function init() {
-  initEqBars();
-  renderNav();
-
-  activeList = PLAYLISTS[activeKey] || [];
-  renderGrid(activeList);
-
-  // pick first
-  if (activeList[0]) {
-    nowPlayingEl.textContent = cleanTitle(activeList[0].title);
-  }
-
-  loadYouTubeAPI().then(() => {
-    if (activeList[0]) selectVideo(activeList[0], true);
-  });
-
-  // if catalog is empty, show note
-  if (!CATALOG.length) {
-    countNoteEl.textContent = "No catalog loaded. Make sure smv_catalog.js is present and loaded before app.js.";
-  }
+  setActiveButtons(el.btnCatalog);
 })();
