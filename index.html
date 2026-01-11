@@ -1,91 +1,66 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>sMV Digital Jukebox</title>
-  <link rel="stylesheet" href="./style.css"/>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header class="banner">
-      <div class="banner-inner">
-        <div class="brand">
-          <img src="./smv_bw.png" alt="sMV"/>
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <h1 style="margin:0">sMV Digital Jukebox</h1>
-              <div class="eqbar" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-                <span></span><span></span><span></span><span></span>
-              </div>
-            </div>
-            <p>Pick a playlist, click a tile, and let it ride. The record toggles play/pause of the YouTube player.</p>
-          </div>
+  <header class="topbar">
+    <div class="brandRow">
+      <div class="brandLeft">
+        <img class="logo" src="smv_bw.png" alt="sMV" onerror="this.style.display='none'"/>
+        <div class="titleBlock">
+          <p class="h1">sMV Digital Jukebox</p>
+          <p class="sub" id="subline">Pick a track — the record spins when it plays</p>
         </div>
-
-        <nav class="nav" aria-label="Playlists">
-          <button class="btn active" data-pl="catalog">Full Catalog</button>
-          <button class="btn" data-pl="latest">Latest Alternatives</button>
-          <button class="btn" data-pl="altrock">Alt Rock</button>
-          <button class="btn" data-pl="althiphop">Alt Hip Hop</button>
-          <button class="btn" data-pl="power">Mixes</button>
-        </nav>
       </div>
-    </header>
+      <button class="psButton" id="powerBtn" title="Open Power Station (playlist / stream)">
+        <img class="psLogo" src="smv_power_station_logo_2.png" alt="" onerror="this.style.display='none'"/>
+        Power Station
+      </button>
+    </div>
 
-    <main class="grid">
-      <section class="card">
-        <div class="card-h">
-          <div>
-            <div class="title">Now Playing</div>
-            <div class="small" id="hint">Tap the record to start/stop.</div>
-          </div>
-          <div class="small" id="count"></div>
+    <div class="eqStrip">
+      <div class="eqBars" id="eqBars" aria-hidden="true"></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="panel left">
+      <div class="playerHeader">
+        <div class="nowPlaying">
+          <div class="label">Now playing</div>
+          <div class="track" id="nowPlaying">—</div>
         </div>
-
-        <div class="player">
-          <div class="record-wrap">
-            <div class="record" id="record" title="Play / Pause">
-              <div class="label">
-                <img src="./power_station.png" alt="Power Station"/>
-              </div>
-            </div>
-            <div class="power-btn">
-              <a id="powerLink" href="#" target="_blank" rel="noopener">
-                <img src="./power_station.png" alt=""/>
-                <span>Power Station</span>
-              </a>
-            </div>
-          </div>
-
-          <div class="player-main">
-            <div class="frame">
-              <iframe id="yt" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-            </div>
-            <div class="now">
-              <div>
-                <div class="song" id="songTitle">—</div>
-                <div class="meta" id="songMeta">—</div>
-              </div>
-              <div class="small" id="modeLabel"></div>
-            </div>
+        <div class="controls">
+          <div class="recordWrap">
+            <div class="record" id="record" title="Play / Pause"></div>
           </div>
         </div>
-      </section>
+      </div>
+      <div class="videoArea">
+        <div id="ytApiMount" style="width:100%;height:100%"></div>
+      </div>
+    </section>
 
-      <section class="card">
-        <div class="card-h">
-          <div class="title" id="libTitle">Library</div>
-          <div class="small">Click a tile</div>
-        </div>
-        <div class="library" id="library"></div>
-        <div class="footer">Built for sMV — swap in real playlist links anytime.</div>
-      </section>
-    </main>
-  </div>
+    <aside class="panel right">
+      <div class="navRow" id="navRow">
+        <!-- buttons injected -->
+      </div>
+      <div class="searchRow">
+        <input class="search" id="search" placeholder="Search the catalog…" autocomplete="off" />
+      </div>
+      <p class="smallNote" id="countNote">—</p>
+      <div class="library">
+        <div class="grid" id="grid"></div>
+      </div>
+    </aside>
+  </main>
 
-  <script src="./catalog.js"></script>
-  <script src="./app.js"></script>
+  <!-- Load catalog first -->
+  <script src="smv_catalog.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
