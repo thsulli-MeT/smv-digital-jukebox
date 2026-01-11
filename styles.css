@@ -85,12 +85,13 @@ a{color:inherit}
   opacity:.95;
   transform-origin: bottom;
 }
-.main{
-  height: calc(100% - 92px);
+ .main{
+  flex:1 1 auto;
+  min-height:0;
   display:grid;
-  grid-template-columns: 1.2fr .8fr;
+  grid-template-columns: 1.35fr .65fr;
   gap:14px;
-  padding:14px 16px 18px;
+  padding:14px 16px 14px;
 }
 .panel{
   background: linear-gradient(180deg, rgba(17,22,36,.90), rgba(15,20,34,.72));
@@ -235,10 +236,11 @@ a{color:inherit}
 .library{
   overflow:auto;
   padding:12px;
+  max-height: calc(100vh - 360px);
 }
 .grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
+  display:flex;
+  flex-direction:column;
   gap:10px;
 }
 .tile{
@@ -416,3 +418,20 @@ a{color:inherit}
   .recordCenterBtn{width: 104px; height:104px;}
   .recordCenterBtn img{width: 82px; height:82px;}
 }
+
+.bannerRow{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:14px;
+  padding:8px 2px 10px;
+}
+.bannerRecord{display:flex; align-items:center; justify-content:flex-end}
+.recordBig{width:220px; height:220px;}
+@media (max-width: 900px){
+  .recordBig{width:170px; height:170px;}
+}
+.controlsRow{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px;
+  padding-top:10px;
+}
+.playControls{display:flex; align-items:center; gap:10px;}

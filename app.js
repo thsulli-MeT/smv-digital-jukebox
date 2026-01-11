@@ -16,6 +16,7 @@ const navRowEl = $("navRow");
 const searchEl = $("search");
 const countNoteEl = $("countNote");
 const powerBtn = $("powerBtn");
+const powerCenter = $("powerCenter");
 
 const EQ_BAR_COUNT = 48;
 const EQ_STEP_LEVELS = 7; // chunky
@@ -280,6 +281,15 @@ powerBtn.addEventListener("click", () => {
   // Switch to the Power Station bucket (swap this list later with your real playlist export)
   activeKey = "power";
   document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+
+
+if (powerCenter) {
+  powerCenter.addEventListener("click", (e) => {
+    e.stopPropagation();
+    loadPlaylist("power");
+  });
+}
+
   const pill = Array.from(document.querySelectorAll(".pill")).find(p => p.textContent.toLowerCase().includes("power"));
   if (pill) pill.classList.add("active");
   activeList = PLAYLISTS[activeKey] || [];

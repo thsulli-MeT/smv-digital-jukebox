@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brandRow">
+    <div class="bannerRow">
       <div class="brandLeft">
         <img class="logo" src="smv_bw.png" alt="sMV" onerror="this.style.display='none'"/>
         <div class="titleBlock">
@@ -16,14 +16,31 @@
           <p class="sub" id="subline">Pick a track — the record spins when it plays</p>
         </div>
       </div>
-      <button class="psButton" id="powerBtn" title="Open Power Station (playlist / stream)">
-        <img class="psLogo" src="smv_power_station_logo_2.png" alt="" onerror="this.style.display='none'"/>
-        Power Station
-      </button>
+
+      <div class="bannerRecord">
+        <div class="record recordBig" id="record" title="Play / Pause">
+          <button class="recordCenterBtn" id="powerCenter" title="Power Station Mixes">
+            <img src="smv_power_station_logo_2.png" alt="Power Station" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="eqStrip">
       <div class="eqBars" id="eqBars" aria-hidden="true"></div>
+    </div>
+
+    <div class="controlsRow">
+      <div class="navRow" id="navRow" aria-label="Playlists">
+        <!-- buttons injected -->
+      </div>
+
+      <div class="playControls">
+        <button class="btn playBtn" id="playBtn" title="Start / Stop">
+          <span class="tri">▶</span>
+          <span class="sq">■</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -34,30 +51,14 @@
           <div class="label">Now playing</div>
           <div class="track" id="nowPlaying">—</div>
         </div>
-        <div class="controls">
-          <div class="recordWrap">
-            <div class="record" id="record" title="Play / Pause">
-              <button class="recordCenterBtn" id="powerBtn" title="Power Station Mixes">
-                <img src="smv_power_station_logo_2.png" alt="Power Station" />
-              </button>
-            </div>
-          </div>
-          <button class="btn playBtn" id="playBtn" title="Start / Stop">
-            <span class="tri">▶</span>
-            <span class="sq">■</span>
-          </button>
-        </div>
       </div>
+
       <div class="videoArea">
         <div id="ytApiMount" style="width:100%;height:100%"></div>
       </div>
     </section>
 
     <aside class="panel right">
-      <div class="navRow" id="navRow">
-        <!-- buttons injected -->
-      </div>
-
       <div class="rightCols">
         <div class="libraryCol">
           <div class="searchRow">
@@ -86,6 +87,7 @@
       </div>
     </aside>
   </main>
+
   <section class="bottomPanel">
     <div class="bottomAd">
       <div class="adLabel">Ad Space</div>
@@ -102,8 +104,6 @@
     </div>
   </section>
 
-
-  <!-- Load catalog first -->
   <script src="smv_catalog.js"></script>
   <script src="app.js"></script>
 </body>
