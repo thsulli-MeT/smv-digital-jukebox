@@ -680,7 +680,7 @@ function buildButtons() {
     const b = document.createElement("button");
     b.className = "pill";
     b.textContent = f.label;
-    b.onclick = () => loadFilter(f.key);
+    b.onclick = () => loadFilter("catalog", true);
     b.dataset.key = f.key;
     els.buttons.appendChild(b);
   });
@@ -725,18 +725,31 @@ function updateNowPlaying() {
 }
 
 function playIndex(idx, autoplay) {
-  if (!currentList.length) return;
-  currentIndex = Math.max(0, Math.min(idx, currentList.length - 1));
-  const v = currentList[currentIndex];
-  updateNowPlaying();
+  if (!activeList.length) return;
+  const safeIdx = Math.max(0, Math.min(idx, activeList.length - 1));
+  currentIndex = safeIdx;
 
-  if (!player) return;
-  // autoplay only after user interaction, otherwise just cue.
-  if (autoplay && userInteracted) {
-    player.loadVideoById(v.id);
-  } else {
-    player.cueVideoById(v.id);
+  const v = activeList[currentIndex];
+  if (player && typeof player.loadVideoById === 'function') {
+    // Always load the selected video.
+    if (autoplay) {
+      // If this wasn't triggered by a user gesture, try muted autoplay (usually allowed).
+      if (!userInteracted) {
+        try { player.mute(); } catch(e) {}
+      }
+      player.loadVideoById(v.id);
+      setRecordSpinning(true);
+    } else {
+      player.cueVideoById(v.id);
+      setRecordSpinning(false);
+    }
   }
+
+  // Update Now Playing
+  els.nowPlaying.textContent = `Now Playing: ★ ${cleanTitle(v.title)}`;
+
+  // Highlight selected
+  renderLibrary();
 }
 
 function nextVideo() {
@@ -745,7 +758,7 @@ function nextVideo() {
   playIndex(next, true);
 }
 
-function loadFilter(key) {
+function loadFilter(key, autoplay = true) {
   const f = FILTERS.find(x => x.key === key) || FILTERS[0];
   const list = filterCatalog(f.match);
 
@@ -754,7 +767,7 @@ function loadFilter(key) {
 
   setActiveButton(f.key);
   renderLibrary(currentList);
-  playIndex(0, false);
+  playIndex(0, autoplay);
 }
 
 function setRecordSpinning(isSpinning) {
@@ -780,13 +793,19 @@ window.onYouTubeIframeAPIReady = function() {
     videoId: (CATALOG[0] && CATALOG[0].id) ? CATALOG[0].id : "",
     playerVars: {
       playsinline: 1,
+      origin: window.location.origin,
       rel: 0,
       modestbranding: 1
     },
     events: {
       onReady: () => {
-        // start with catalog loaded but not autoplay
-        loadFilter("catalog");
+        // start with full catalog loaded
+        loadFilter("catalog", true);
+        // try muted autoplay on first load (browser may allow); user can always click record.
+        setTimeout(() => {
+          try { player.mute(); } catch(e) {}
+          try { player.playVideo(); } catch(e) {}
+        }, 250);
         setRecordSpinning(false);
       },
       onStateChange: (e) => {
@@ -804,11 +823,18 @@ window.onYouTubeIframeAPIReady = function() {
 
 function init() {
   buildButtons();
-  els.record.addEventListener("click", togglePlayPause);
+  els\.record\.addEventListener\("click", togglePlayPause\);
+  const tapOverlay = document.getElementById("tapOverlay");
+  if (tapOverlay) {
+    tapOverlay.addEventListener("click", () => {
+      userInteracted = true;
+      togglePlayPause();
+    });
+  }
   els.recordLabel.addEventListener("click", () => {
     userInteracted = true;
     // load mixes filter + play
-    loadFilter("mixes");
+    loadFilter("catalog", true);
     setTimeout(() => togglePlayPause(), 50);
   });
 }

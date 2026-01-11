@@ -304,7 +304,17 @@
       #library{max-height: unset}
       .record{width:180px}
     }
-  </style>
+  
+      .tapOverlay{
+        position:absolute;
+        inset:0;
+        z-index:5;
+        cursor:pointer;
+        background:transparent;
+      }
+      /* keep overlay from blocking scroll on library etc. only sits over player */
+
+    </style>
 </head>
 <body>
   <div class="wrap">
@@ -332,8 +342,9 @@
 
     <section class="grid">
       <div class="panel playerPanel">
-        <div class="playerFrame">
+        <div class="playerFrame" id="playerFrame">
           <div id="player"></div>
+          <div class="tapOverlay" id="tapOverlay" title="Tap to start/stop"></div>
         </div>
         <div class="now" id="nowPlaying">Now Playing: —</div>
         <div class="bottomAd">Ad space</div>
