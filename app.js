@@ -9,6 +9,7 @@
 const $ = (id) => document.getElementById(id);
 
 const recordEl = $("record");
+const playBtnEl = $("playBtn");
 const nowPlayingEl = $("nowPlaying");
 const gridEl = $("grid");
 const navRowEl = $("navRow");
@@ -53,6 +54,7 @@ const NAV = [
   { key: "power", label: "Power Station" },
 ];
 
+let currentIndex = 0;
 let activeKey = "all";
 let activeList = PLAYLISTS[activeKey] || [];
 let activeVideo = null;
@@ -120,9 +122,9 @@ function renderNav() {
       btn.classList.add("active");
       activeList = PLAYLISTS[activeKey] || [];
       searchEl.value = "";
+      currentIndex = 0;
       renderGrid(activeList);
-      // auto-load first track if none
-      if (activeList[0]) selectVideo(activeList[0]);
+      if (activeList[0]) selectVideo(activeList[0], true);
     };
     navRowEl.appendChild(btn);
   });
@@ -143,9 +145,10 @@ function renderGrid(list) {
 
   countNoteEl.textContent = `${filtered.length} tracks`;
 
-  filtered.forEach(v => {
+  filtered.forEach((v, i) => {
     const tile = document.createElement("div");
     tile.className = "tile";
+    tile.dataset.id = v.id;
     const t = cleanTitle(v.title) || "Untitled";
     tile.innerHTML = `
       <img class="thumb" src="${thumbUrl(v.id)}" alt="">
@@ -161,7 +164,7 @@ function renderGrid(list) {
       img.src = `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`;
     };
 
-    tile.onclick = () => selectVideo(v, true);
+    tile.onclick = () => { currentIndex = i; selectVideo(v, true); };
     gridEl.appendChild(tile);
   });
 }
@@ -205,6 +208,7 @@ function createPlayer(videoId) {
         ytReady = true;
         isPlaying = true;
         recordEl.classList.add("recordSpin");
+          playBtnEl.classList.add("isPlaying");
         setEqAnimating(true);
       },
       onStateChange: (e) => {
@@ -212,16 +216,29 @@ function createPlayer(videoId) {
         if (e.data === YT.PlayerState.PLAYING) {
           isPlaying = true;
           recordEl.classList.add("recordSpin");
+          playBtnEl.classList.add("isPlaying");
           setEqAnimating(true);
         }
         if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
           isPlaying = false;
           recordEl.classList.remove("recordSpin");
+          playBtnEl.classList.remove("isPlaying");
           setEqAnimating(false);
         }
       }
     }
   });
+}
+
+
+function playNext() {
+  if (!activeList || activeList.length === 0) return;
+  const nextIndex = (currentIndex + 1) % activeList.length;
+  const v = activeList[nextIndex];
+  currentIndex = nextIndex;
+  selectVideo(v, true);
+  const tile = document.querySelector(`.tile[data-id="${v.id}"]`);
+  if (tile && tile.scrollIntoView) tile.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function selectVideo(v, autoplay = true) {
@@ -247,15 +264,29 @@ recordEl.addEventListener("click", () => {
     ytPlayer.playVideo();
   }
 });
+// ---- Start/Stop button
+playBtnEl.addEventListener("click", () => {
+  if (!ytPlayer || !ytReady) return;
+  if (isPlaying) ytPlayer.pauseVideo();
+  else ytPlayer.playVideo();
+});
+
 
 // ---- Search
 searchEl.addEventListener("input", () => renderGrid(activeList));
 
-// ---- Power button
+// ---- Power button (loads the "Power Station" playlist bucket)
 powerBtn.addEventListener("click", () => {
-  // You can change this later to your Power Station playlist/stream
-  // For now, just opens your YouTube channel in a new tab
-  window.open("https://www.youtube.com/@sMVshortMusicVideos", "_blank", "noopener,noreferrer");
+  // Switch to the Power Station bucket (swap this list later with your real playlist export)
+  activeKey = "power";
+  document.querySelectorAll(".pill").forEach(p => p.classList.remove("active"));
+  const pill = Array.from(document.querySelectorAll(".pill")).find(p => p.textContent.toLowerCase().includes("power"));
+  if (pill) pill.classList.add("active");
+  activeList = PLAYLISTS[activeKey] || [];
+  searchEl.value = "";
+  currentIndex = 0;
+  renderGrid(activeList);
+  if (activeList[0]) selectVideo(activeList[0], true);
 });
 
 // ---- Init

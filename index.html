@@ -36,8 +36,16 @@
         </div>
         <div class="controls">
           <div class="recordWrap">
-            <div class="record" id="record" title="Play / Pause"></div>
+            <div class="record" id="record" title="Play / Pause">
+              <button class="recordCenterBtn" id="powerBtn" title="Power Station Mixes">
+                <img src="smv_power_station_logo_2.png" alt="Power Station" />
+              </button>
+            </div>
           </div>
+          <button class="btn playBtn" id="playBtn" title="Start / Stop">
+            <span class="tri">▶</span>
+            <span class="sq">■</span>
+          </button>
         </div>
       </div>
       <div class="videoArea">
@@ -49,15 +57,51 @@
       <div class="navRow" id="navRow">
         <!-- buttons injected -->
       </div>
-      <div class="searchRow">
-        <input class="search" id="search" placeholder="Search the catalog…" autocomplete="off" />
-      </div>
-      <p class="smallNote" id="countNote">—</p>
-      <div class="library">
-        <div class="grid" id="grid"></div>
+
+      <div class="rightCols">
+        <div class="libraryCol">
+          <div class="searchRow">
+            <input class="search" id="search" placeholder="Search the catalog…" autocomplete="off" />
+          </div>
+          <p class="smallNote" id="countNote">—</p>
+          <div class="library">
+            <div class="grid" id="grid"></div>
+          </div>
+        </div>
+
+        <div class="adsCol">
+          <div class="adBox">
+            <div class="adLabel">Sponsored</div>
+            <div class="adInner">
+              <img id="sideAdImg" src="digital_jukebox.jpg" alt="Side Ad" />
+            </div>
+          </div>
+          <div class="adBox">
+            <div class="adLabel">Featured</div>
+            <div class="adInner">
+              <img id="sideAdImg2" src="smv_bw.png" alt="Side Ad 2" />
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   </main>
+  <section class="bottomPanel">
+    <div class="bottomAd">
+      <div class="adLabel">Ad Space</div>
+      <div class="adInner">
+        <img id="bottomAdImg" src="digital_jukebox.jpg" alt="Bottom Ad" />
+      </div>
+    </div>
+    <div class="bottomInfo">
+      <div class="adLabel">Info</div>
+      <div class="infoText">
+        <b>sMV Digital Jukebox</b> — pick a playlist, tap a thumbnail, and let it roll.
+        Want the full experience? Use headphones or a solid speaker setup.
+      </div>
+    </div>
+  </section>
+
 
   <!-- Load catalog first -->
   <script src="smv_catalog.js"></script>
