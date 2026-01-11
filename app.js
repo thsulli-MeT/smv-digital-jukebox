@@ -12,7 +12,6 @@ const state = {
 };
 
 const els = {
-  overlay: null,
   nowPlaying: null,
   library: null,
   record: null,
@@ -199,22 +198,23 @@ async function loadCatalog() {
   state.filtered = state.catalog.slice(0);
 }
 
-function wireUI() {
-  els.overlay = document.getElementById('overlay');
-  els.nowPlaying = document.getElementById('nowPlaying');
+function wireUI() {  els.nowPlaying = document.getElementById('nowPlaying');
   els.library = document.getElementById('library');
   els.record = document.getElementById('record');
   els.btnBar = document.getElementById('btnBar');
+  els.playBtn = document.getElementById('powerBtn');
 
   // Record + video area click = play/pause
   els.record?.addEventListener('click', togglePlayPause);
+
+  // Play button (below record)
+  els.playBtn?.addEventListener('click', togglePlayPause);
 
   // Big player area click
   const playerArea = document.getElementById('playerArea');
   playerArea?.addEventListener('click', togglePlayPause);
 
   // Overlay click also starts
-  els.overlay?.addEventListener('click', togglePlayPause);
 
   // Buttons
   const buttons = document.querySelectorAll('[data-filter]');
