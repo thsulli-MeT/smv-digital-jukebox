@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">
+<rect width="100%" height="100%" fill="#111"/>
+<rect x="20" y="20" width="760" height="560" fill="none" stroke="#666" stroke-width="4" stroke-dasharray="12,12"/>
+<text x="50%" y="50%" fill="#bbb" font-size="48" font-family="Arial, Helvetica, sans-serif" text-anchor="middle">BOTTOM AD / INFO</text>
+</svg>

@@ -1,266 +1,198 @@
-// sMV Digital Jukebox
-// - Uses YouTube IFrame API for reliable play/pause + auto-next
-// - Autoplay is blocked by many browsers unless user interacts
 
-const state = {
-  catalog: [],
-  filtered: [],
-  currentIndex: 0,
-  currentFilter: 'all',
-  userStarted: false,
-  playerReady: false,
-};
+const CATALOG_URL = "./smv_catalog_clean.json";
 
-const els = {
-  nowPlaying: null,
-  library: null,
-  record: null,
-  btnBar: null,
-};
+const filtersEl = document.getElementById("filters");
+const libraryEl = document.getElementById("library");
+const recordBtn = document.getElementById("recordBtn");
+const playBtn = document.getElementById("playBtn");
+const nowPlayingEl = document.getElementById("nowPlaying");
 
-let player = null;
+(function initBars(){
+  const bars = document.getElementById("bars");
+  if (!bars) return;
+  bars.innerHTML = "";
+  const count = 72;
+  for (let i = 0; i < count; i++){
+    const b = document.createElement("div");
+    b.className = "bar";
+    const h = 6 + Math.floor(Math.random() * 14);
+    b.style.height = `${h}px`;
+    b.style.opacity = `${0.65 + Math.random()*0.35}`;
+    bars.appendChild(b);
+  }
+})();
 
-function cleanTitle(t) {
-  if (!t) return '';
-  return t
-    .replace(/\s*#\w+/g, '')
-    .replace(/\s*\|\s*sMV.*$/i, '')
-    .replace(/\s*sMV\s*short\s*music\s*videos\s*/ig, '')
-    .replace(/\s*me\s*t\s*x\s*/ig, '')
-    .replace(/\s{2,}/g, ' ')
+(function initRecordCenter(){
+  const center = document.createElement("div");
+  center.className = "recordCenter";
+  center.innerHTML = `<img src="power_station_center.svg" alt="Power Station">`;
+  recordBtn.appendChild(center);
+})();
+
+function cleanTitle(title){
+  if (!title) return "";
+  return String(title)
+    .replace(/\s*#.+$/g, "")
+    .replace(/\s*sMV short Music Videos.*$/i, "")
+    .replace(/\s*Me T\s*x\s*sMV short Music Videos.*$/i, "")
+    .replace(/[“”]/g, '"')
     .trim();
 }
 
-function matchesFilter(title, filterName) {
-  const t = (title || '').toLowerCase();
-  switch (filterName) {
-    case 'all':
-      return true;
-    case 'alt-hip-hop':
-      return t.includes('hip hop') || t.includes('hip-hop') || t.includes('trap');
-    case 'alt-rock':
-      return t.includes('rock');
-    case 'alt-pop':
-      return t.includes('pop');
-    case 'reggae':
-      return t.includes('reggae');
-    case 'punk-pop':
-      return (t.includes('punk') && t.includes('pop')) || t.includes('punk-pop');
-    case 'edm':
-      return t.includes('edm') || t.includes('electronic') || t.includes('house') || t.includes('techno');
-    case 'future-pop':
-      return t.includes('future pop') || t.includes('future-pop') || t.includes('futurepop');
-    case 'country':
-      return t.includes('country');
-    case 'mix':
-      return t.includes('mix') || t.includes('playlist') || t.includes('radio');
-    default:
-      return true;
-  }
-}
+const FILTERS = [
+  { key: "all", label: "All", match: () => true },
+  { key: "mix", label: "Power Station Mix", match: (t) => /mix/i.test(t) },
+  { key: "reggae", label: "Reggae", match: (t) => /reggae/i.test(t) },
+  { key: "punkpop", label: "Punk Pop", match: (t) => /punk\s*pop|punkpop/i.test(t) },
+  { key: "edm", label: "EDM", match: (t) => /\bedm\b/i.test(t) },
+  { key: "futurepop", label: "Future Pop", match: (t) => /future\s*pop|futurepop/i.test(t) },
+  { key: "country", label: "Country", match: (t) => /country/i.test(t) },
+  { key: "altrock", label: "Alt Rock", match: (t) => /alt\s*rock|alternative\s*rock/i.test(t) },
+  { key: "althiphop", label: "Alt Hip Hop", match: (t) => /alt\s*hip\s*hop|alternative\s*hip\s*hop|alt\s*hiphop/i.test(t) },
+  { key: "latest", label: "Latest Alternative", match: (t) => /latest/i.test(t) },
+];
 
-function applyFilter(filterName) {
-  state.currentFilter = filterName;
-  state.filtered = state.catalog.filter(v => matchesFilter(v.title, filterName));
-  if (state.filtered.length === 0) {
-    // fall back gracefully
-    state.filtered = state.catalog.slice(0);
-  }
-  state.currentIndex = 0;
-  renderLibrary();
-  loadIndex(0, /*autoplay*/ false);
-}
+let fullCatalog = [];
+let currentList = [];
+let currentIndex = 0;
+let currentFilter = "all";
 
-function setNowPlaying(text) {
-  if (els.nowPlaying) els.nowPlaying.textContent = text;
-}
+let player = null;
+let apiReady = false;
+let pendingVideoId = null;
 
-function highlightTile() {
-  const tiles = els.library?.querySelectorAll('.tile');
-  if (!tiles) return;
-  tiles.forEach((t, i) => t.classList.toggle('active', i === state.currentIndex));
-  // keep active in view
-  const active = tiles[state.currentIndex];
-  if (active) active.scrollIntoView({ block: 'nearest' });
-}
-
-function renderLibrary() {
-  if (!els.library) return;
-  els.library.innerHTML = '';
-
-  state.filtered.forEach((v, i) => {
-    const tile = document.createElement('div');
-    tile.className = 'tile';
-
-    const img = document.createElement('img');
-    img.alt = cleanTitle(v.title);
-    img.src = `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`;
-
-    const title = document.createElement('div');
-    title.className = 't';
-    title.textContent = cleanTitle(v.title) || v.title;
-
-    tile.appendChild(img);
-    tile.appendChild(title);
-
-    tile.addEventListener('click', () => {
-      state.currentIndex = i;
-      loadIndex(i, /*autoplay*/ true);
-    });
-
-    els.library.appendChild(tile);
+window.onYouTubeIframeAPIReady = function(){
+  apiReady = true;
+  player = new YT.Player("player", {
+    height: "100%",
+    width: "100%",
+    videoId: "",
+    playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+    events: {
+      onReady: () => {
+        if (pendingVideoId){
+          player.cueVideoById(pendingVideoId);
+          pendingVideoId = null;
+        }
+      },
+      onStateChange: (e) => {
+        if (e.data === YT.PlayerState.PLAYING){
+          recordBtn.classList.add("spinning");
+          playBtn.textContent = "Pause";
+        } else if (e.data === YT.PlayerState.PAUSED){
+          recordBtn.classList.remove("spinning");
+          playBtn.textContent = "Play";
+        } else if (e.data === YT.PlayerState.ENDED){
+          recordBtn.classList.remove("spinning");
+          playBtn.textContent = "Play";
+          playNext();
+        }
+      }
+    }
   });
+};
 
-  highlightTile();
+function setNowPlaying(){
+  const v = currentList[currentIndex];
+  nowPlayingEl.textContent = v ? `• Now playing: ${cleanTitle(v.title)}` : "";
 }
 
-function spinRecord(isSpinning) {
-  if (!els.record) return;
-  els.record.classList.toggle('spinning', !!isSpinning);
-}
-
-function ensureUserStarted() {
-  if (state.userStarted) return;
-  state.userStarted = true;
-  if (els.overlay) els.overlay.classList.add('hide');
-}
-
-function loadIndex(idx, autoplay) {
-  if (!state.playerReady || !player) return;
-  const v = state.filtered[idx];
-  if (!v) return;
-
-  setNowPlaying(`Now Playing: ★ ${cleanTitle(v.title) || v.title}`);
-  highlightTile();
-
-  // cue video first; then optionally play
-  player.cueVideoById({ videoId: v.id });
-
-  // Some browsers need a short delay before playVideo after cueVideoById
-  if (autoplay) {
-    ensureUserStarted();
-    setTimeout(() => {
-      try { player.playVideo(); } catch (e) {}
-    }, 120);
+function cueVideo(id){
+  if (!id) return;
+  if (apiReady && player && player.cueVideoById){
+    player.cueVideoById(id);
   } else {
-    spinRecord(false);
+    pendingVideoId = id;
   }
 }
 
-function nextVideo(autoplay = true) {
-  if (!state.filtered.length) return;
-  state.currentIndex = (state.currentIndex + 1) % state.filtered.length;
-  loadIndex(state.currentIndex, autoplay);
+function playVideo(id){
+  if (!id) return;
+  if (apiReady && player && player.loadVideoById){
+    player.loadVideoById(id);
+  } else {
+    pendingVideoId = id;
+  }
 }
 
-function togglePlayPause() {
-  if (!state.playerReady || !player) return;
-  ensureUserStarted();
-
-  const st = player.getPlayerState();
-  // -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued
-  if (st === 1 || st === 3) {
+function togglePlay(){
+  if (!apiReady || !player) return;
+  const state = player.getPlayerState();
+  if (state === YT.PlayerState.PLAYING){
     player.pauseVideo();
   } else {
+    const v = currentList[currentIndex];
+    if (v && state === YT.PlayerState.UNSTARTED){
+      player.loadVideoById(v.id);
+      return;
+    }
     player.playVideo();
   }
 }
 
-function onPlayerStateChange(event) {
-  const s = event.data;
-  if (s === YT.PlayerState.PLAYING) {
-    spinRecord(true);
-  }
-  if (s === YT.PlayerState.PAUSED || s === YT.PlayerState.CUED) {
-    spinRecord(false);
-  }
-  if (s === YT.PlayerState.ENDED) {
-    spinRecord(false);
-    nextVideo(true);
-  }
+recordBtn.addEventListener("click", togglePlay);
+playBtn.addEventListener("click", togglePlay);
+
+function playNext(){
+  if (!currentList.length) return;
+  currentIndex = (currentIndex + 1) % currentList.length;
+  setNowPlaying();
+  playVideo(currentList[currentIndex].id);
 }
 
-async function loadCatalog() {
-  // Prefer the clean JSON (relative file). If missing, fall back to a tiny stub.
-  try {
-    const res = await fetch('smv_catalog_clean.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('catalog fetch failed');
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('catalog is not an array');
-    state.catalog = data.filter(x => x && x.id);
-  } catch (e) {
-    state.catalog = [
-      { title: 'sMV Short Music Videos', id: 'J7jlx50LEj4' },
-    ];
-  }
-
-  // Default view
-  state.filtered = state.catalog.slice(0);
-}
-
-function wireUI() {  els.nowPlaying = document.getElementById('nowPlaying');
-  els.library = document.getElementById('library');
-  els.record = document.getElementById('record');
-  els.btnBar = document.getElementById('btnBar');
-  els.playBtn = document.getElementById('powerBtn');
-
-  // Record + video area click = play/pause
-  els.record?.addEventListener('click', togglePlayPause);
-
-  // Play button (below record)
-  els.playBtn?.addEventListener('click', togglePlayPause);
-
-  // Big player area click
-  const playerArea = document.getElementById('playerArea');
-  playerArea?.addEventListener('click', togglePlayPause);
-
-  // Overlay click also starts
-
-  // Buttons
-  const buttons = document.querySelectorAll('[data-filter]');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const f = btn.getAttribute('data-filter') || 'all';
-      applyFilter(f);
-      buttons.forEach(b => b.classList.toggle('active', b === btn));
+function buildFilters(){
+  filtersEl.innerHTML = "";
+  FILTERS.forEach(f => {
+    const btn = document.createElement("button");
+    btn.className = "chip" + (f.key === currentFilter ? " active" : "");
+    btn.textContent = f.label;
+    btn.addEventListener("click", () => {
+      currentFilter = f.key;
+      [...filtersEl.querySelectorAll(".chip")].forEach(x => x.classList.remove("active"));
+      btn.classList.add("active");
+      applyFilter();
     });
+    filtersEl.appendChild(btn);
   });
 }
 
-function createPlayer() {
-  player = new YT.Player('ytPlayer', {
-    height: '100%',
-    width: '100%',
-    videoId: (state.filtered[0] && state.filtered[0].id) ? state.filtered[0].id : 'J7jlx50LEj4',
-    playerVars: {
-      playsinline: 1,
-      rel: 0,
-      modestbranding: 1,
-      autoplay: 0,
-      controls: 1,
-    },
-    events: {
-      onReady: () => {
-        state.playerReady = true;
-        // Cue the first video; user gesture will start playback.
-        loadIndex(0, /*autoplay*/ false);
-      },
-      onStateChange: onPlayerStateChange,
-    }
-  });
-}
-
-// YouTube API hook
-window.onYouTubeIframeAPIReady = async function () {
-  await loadCatalog();
-  wireUI();
+function applyFilter(){
+  const fil = FILTERS.find(x => x.key === currentFilter) || FILTERS[0];
+  currentList = fullCatalog.filter(v => fil.match(v.title || ""));
+  if (currentList.length === 0) currentList = [...fullCatalog];
+  currentIndex = 0;
   renderLibrary();
-  createPlayer();
-};
+  setNowPlaying();
+  cueVideo(currentList[0]?.id);
+}
 
-// Load YT IFrame API
-(function loadYT(){
-  const tag = document.createElement('script');
-  tag.src = 'https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-})();
+function renderLibrary(){
+  libraryEl.innerHTML = "";
+  currentList.forEach((v, idx) => {
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.innerHTML = `
+      <img src="https://img.youtube.com/vi/${v.id}/hqdefault.jpg" alt="">
+      <div class="tileTitle">${cleanTitle(v.title) || "Untitled"}</div>
+    `;
+    tile.addEventListener("click", () => {
+      currentIndex = idx;
+      setNowPlaying();
+      playVideo(v.id);
+    });
+    libraryEl.appendChild(tile);
+  });
+}
+
+async function loadCatalog(){
+  const res = await fetch(CATALOG_URL, { cache: "no-store" });
+  const data = await res.json();
+  fullCatalog = (Array.isArray(data) ? data : []).filter(x => x && x.id);
+  buildFilters();
+  applyFilter();
+}
+
+loadCatalog().catch(err => {
+  console.error(err);
+  libraryEl.innerHTML = `<div style="padding:14px;color:rgba(255,255,255,.8)">Could not load catalog. Put <b>smv_catalog_clean.json</b> in the same folder.</div>`;
+});
