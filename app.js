@@ -1,198 +1,263 @@
+const STORAGE_KEY = "smv-playlist-jukebox-stations";
+const DEFAULT_SOURCE_URL = "https://www.youtube.com/@sMVshortMusicVideos/playlists";
 
-const CATALOG_URL = "./smv_catalog_clean.json";
-
-const filtersEl = document.getElementById("filters");
-const libraryEl = document.getElementById("library");
-const recordBtn = document.getElementById("recordBtn");
-const playBtn = document.getElementById("playBtn");
-const nowPlayingEl = document.getElementById("nowPlaying");
-
-(function initBars(){
-  const bars = document.getElementById("bars");
-  if (!bars) return;
-  bars.innerHTML = "";
-  const count = 72;
-  for (let i = 0; i < count; i++){
-    const b = document.createElement("div");
-    b.className = "bar";
-    const h = 6 + Math.floor(Math.random() * 14);
-    b.style.height = `${h}px`;
-    b.style.opacity = `${0.65 + Math.random()*0.35}`;
-    bars.appendChild(b);
+const DEFAULT_STATIONS = [
+  {
+    id: "station-starter-1",
+    title: "Starter Station Template",
+    description: "Replace this with a real sMV playlist URL after copying one from the channel playlists page.",
+    playlistId: "",
+    playlistUrl: DEFAULT_SOURCE_URL,
+    source: "Built-in template"
   }
-})();
-
-(function initRecordCenter(){
-  const center = document.createElement("div");
-  center.className = "recordCenter";
-  center.innerHTML = `<img src="power_station_center.svg" alt="Power Station">`;
-  recordBtn.appendChild(center);
-})();
-
-function cleanTitle(title){
-  if (!title) return "";
-  return String(title)
-    .replace(/\s*#.+$/g, "")
-    .replace(/\s*sMV short Music Videos.*$/i, "")
-    .replace(/\s*Me T\s*x\s*sMV short Music Videos.*$/i, "")
-    .replace(/[“”]/g, '"')
-    .trim();
-}
-
-const FILTERS = [
-  { key: "all", label: "All", match: () => true },
-  { key: "mix", label: "Power Station Mix", match: (t) => /mix/i.test(t) },
-  { key: "reggae", label: "Reggae", match: (t) => /reggae/i.test(t) },
-  { key: "punkpop", label: "Punk Pop", match: (t) => /punk\s*pop|punkpop/i.test(t) },
-  { key: "edm", label: "EDM", match: (t) => /\bedm\b/i.test(t) },
-  { key: "futurepop", label: "Future Pop", match: (t) => /future\s*pop|futurepop/i.test(t) },
-  { key: "country", label: "Country", match: (t) => /country/i.test(t) },
-  { key: "altrock", label: "Alt Rock", match: (t) => /alt\s*rock|alternative\s*rock/i.test(t) },
-  { key: "althiphop", label: "Alt Hip Hop", match: (t) => /alt\s*hip\s*hop|alternative\s*hip\s*hop|alt\s*hiphop/i.test(t) },
-  { key: "latest", label: "Latest Alternative", match: (t) => /latest/i.test(t) },
 ];
 
-let fullCatalog = [];
-let currentList = [];
-let currentIndex = 0;
-let currentFilter = "all";
+const stationListEl = document.getElementById("stationList");
+const emptyStateEl = document.getElementById("emptyState");
+const playlistInputEl = document.getElementById("playlistInput");
+const titleInputEl = document.getElementById("titleInput");
+const descriptionInputEl = document.getElementById("descriptionInput");
+const saveStationBtn = document.getElementById("saveStationBtn");
+const statusMessageEl = document.getElementById("statusMessage");
+const activeStationNameEl = document.getElementById("activeStationName");
+const activePlaylistIdEl = document.getElementById("activePlaylistId");
+const activePlaylistUrlEl = document.getElementById("activePlaylistUrl");
+const recordBtn = document.getElementById("recordBtn");
+const playBtn = document.getElementById("playBtn");
 
 let player = null;
 let apiReady = false;
-let pendingVideoId = null;
+let stations = loadStations();
+let activeStationId = stations[0]?.id ?? null;
+let pendingPlaylistId = stations.find((station) => station.id === activeStationId)?.playlistId || null;
 
-window.onYouTubeIframeAPIReady = function(){
+window.onYouTubeIframeAPIReady = function onYouTubeIframeAPIReady() {
   apiReady = true;
   player = new YT.Player("player", {
     height: "100%",
     width: "100%",
-    videoId: "",
-    playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+    playerVars: {
+      listType: "playlist",
+      list: pendingPlaylistId || undefined,
+      playsinline: 1,
+      rel: 0,
+      modestbranding: 1
+    },
     events: {
       onReady: () => {
-        if (pendingVideoId){
-          player.cueVideoById(pendingVideoId);
-          pendingVideoId = null;
+        if (pendingPlaylistId) {
+          loadPlaylistIntoPlayer(pendingPlaylistId);
         }
       },
-      onStateChange: (e) => {
-        if (e.data === YT.PlayerState.PLAYING){
+      onStateChange: (event) => {
+        if (event.data === YT.PlayerState.PLAYING) {
           recordBtn.classList.add("spinning");
           playBtn.textContent = "Pause";
-        } else if (e.data === YT.PlayerState.PAUSED){
+        } else if (
+          event.data === YT.PlayerState.PAUSED ||
+          event.data === YT.PlayerState.ENDED ||
+          event.data === YT.PlayerState.CUED
+        ) {
           recordBtn.classList.remove("spinning");
           playBtn.textContent = "Play";
-        } else if (e.data === YT.PlayerState.ENDED){
-          recordBtn.classList.remove("spinning");
-          playBtn.textContent = "Play";
-          playNext();
         }
       }
     }
   });
 };
 
-function setNowPlaying(){
-  const v = currentList[currentIndex];
-  nowPlayingEl.textContent = v ? `• Now playing: ${cleanTitle(v.title)}` : "";
-}
-
-function cueVideo(id){
-  if (!id) return;
-  if (apiReady && player && player.cueVideoById){
-    player.cueVideoById(id);
-  } else {
-    pendingVideoId = id;
+function loadStations() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [...DEFAULT_STATIONS];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_STATIONS];
+    return parsed.filter(Boolean);
+  } catch (error) {
+    console.error("Could not load saved stations", error);
+    return [...DEFAULT_STATIONS];
   }
 }
 
-function playVideo(id){
-  if (!id) return;
-  if (apiReady && player && player.loadVideoById){
-    player.loadVideoById(id);
-  } else {
-    pendingVideoId = id;
+function saveStations() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stations));
+}
+
+function parsePlaylistInput(value) {
+  const input = String(value || "").trim();
+  if (!input) return null;
+
+  const directIdMatch = input.match(/^[A-Za-z0-9_-]{10,}$/);
+  if (directIdMatch) {
+    return {
+      playlistId: input,
+      playlistUrl: `https://www.youtube.com/playlist?list=${input}`
+    };
+  }
+
+  try {
+    const url = new URL(input);
+    const listId = url.searchParams.get("list");
+    if (!listId) return null;
+    return {
+      playlistId: listId,
+      playlistUrl: url.toString()
+    };
+  } catch (error) {
+    return null;
   }
 }
 
-function togglePlay(){
+function showStatus(message, isError = false) {
+  statusMessageEl.textContent = message;
+  statusMessageEl.style.color = isError ? "#ff9d9d" : "var(--good)";
+}
+
+function buildStationMarkup(station) {
+  const hasPlaylist = Boolean(station.playlistId);
+  const sourceLabel = station.source || "Saved station";
+  return `
+    <div class="stationTop">
+      <div>
+        <div class="stationTitle">${escapeHtml(station.title || "Untitled station")}</div>
+        <div class="stationDesc">${escapeHtml(station.description || "No description yet.")}</div>
+      </div>
+      <span class="pill">${hasPlaylist ? "Ready" : "Needs URL"}</span>
+    </div>
+    <div class="stationMeta">
+      <span class="pill">${escapeHtml(sourceLabel)}</span>
+      <span class="pill">${hasPlaylist ? escapeHtml(station.playlistId) : "Paste a playlist URL"}</span>
+    </div>
+  `;
+}
+
+function renderStations() {
+  stationListEl.innerHTML = "";
+  const realStations = stations.filter(Boolean);
+  emptyStateEl.hidden = realStations.length > 0;
+
+  realStations.forEach((station) => {
+    const button = document.createElement("button");
+    button.className = `stationBtn${station.id === activeStationId ? " active" : ""}`;
+    button.innerHTML = buildStationMarkup(station);
+    button.addEventListener("click", () => activateStation(station.id, true));
+    stationListEl.appendChild(button);
+  });
+}
+
+function updateNowPlayingPanel(station) {
+  activeStationNameEl.textContent = station?.title || "Select a playlist station";
+  activePlaylistIdEl.textContent = station?.playlistId || "—";
+  activePlaylistUrlEl.textContent = station?.playlistUrl ? "Open source playlist" : "Open sMV playlists";
+  activePlaylistUrlEl.href = station?.playlistUrl || DEFAULT_SOURCE_URL;
+}
+
+function loadPlaylistIntoPlayer(playlistId) {
+  if (!playlistId) return;
+  if (apiReady && player?.loadPlaylist) {
+    player.loadPlaylist({
+      list: playlistId,
+      listType: "playlist",
+      index: 0
+    });
+  } else {
+    pendingPlaylistId = playlistId;
+  }
+}
+
+function activateStation(stationId, autoplay = false) {
+  const station = stations.find((item) => item.id === stationId);
+  if (!station) return;
+
+  activeStationId = station.id;
+  updateNowPlayingPanel(station);
+  renderStations();
+
+  if (!station.playlistId) {
+    showStatus("This station is only a template right now. Paste a real playlist URL to make it playable.", true);
+    return;
+  }
+
+  showStatus(`Loaded ${station.title}.`, false);
+  loadPlaylistIntoPlayer(station.playlistId);
+
+  if (autoplay && apiReady && player?.playVideo) {
+    setTimeout(() => {
+      try {
+        player.playVideo();
+      } catch (error) {
+        console.warn("Autoplay was blocked by the browser", error);
+      }
+    }, 350);
+  }
+}
+
+function togglePlayback() {
   if (!apiReady || !player) return;
   const state = player.getPlayerState();
-  if (state === YT.PlayerState.PLAYING){
+  if (state === YT.PlayerState.PLAYING) {
     player.pauseVideo();
   } else {
-    const v = currentList[currentIndex];
-    if (v && state === YT.PlayerState.UNSTARTED){
-      player.loadVideoById(v.id);
-      return;
-    }
     player.playVideo();
   }
 }
 
-recordBtn.addEventListener("click", togglePlay);
-playBtn.addEventListener("click", togglePlay);
-
-function playNext(){
-  if (!currentList.length) return;
-  currentIndex = (currentIndex + 1) % currentList.length;
-  setNowPlaying();
-  playVideo(currentList[currentIndex].id);
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
-function buildFilters(){
-  filtersEl.innerHTML = "";
-  FILTERS.forEach(f => {
-    const btn = document.createElement("button");
-    btn.className = "chip" + (f.key === currentFilter ? " active" : "");
-    btn.textContent = f.label;
-    btn.addEventListener("click", () => {
-      currentFilter = f.key;
-      [...filtersEl.querySelectorAll(".chip")].forEach(x => x.classList.remove("active"));
-      btn.classList.add("active");
-      applyFilter();
-    });
-    filtersEl.appendChild(btn);
-  });
+function createStationFromForm() {
+  const parsed = parsePlaylistInput(playlistInputEl.value);
+  const title = titleInputEl.value.trim();
+  const description = descriptionInputEl.value.trim();
+
+  if (!parsed) {
+    showStatus("Paste a valid YouTube playlist URL or playlist ID.", true);
+    return;
+  }
+
+  const station = {
+    id: `station-${Date.now()}`,
+    title: title || `sMV Playlist ${stations.length + 1}`,
+    description: description || "Saved from the sMV playlist-first jukebox.",
+    playlistId: parsed.playlistId,
+    playlistUrl: parsed.playlistUrl,
+    source: "Saved locally"
+  };
+
+  stations = [station, ...stations.filter((item) => item.playlistId !== parsed.playlistId)];
+  saveStations();
+  playlistInputEl.value = "";
+  titleInputEl.value = "";
+  descriptionInputEl.value = "";
+  showStatus(`Saved ${station.title}.`, false);
+  activateStation(station.id, false);
 }
 
-function applyFilter(){
-  const fil = FILTERS.find(x => x.key === currentFilter) || FILTERS[0];
-  currentList = fullCatalog.filter(v => fil.match(v.title || ""));
-  if (currentList.length === 0) currentList = [...fullCatalog];
-  currentIndex = 0;
-  renderLibrary();
-  setNowPlaying();
-  cueVideo(currentList[0]?.id);
-}
-
-function renderLibrary(){
-  libraryEl.innerHTML = "";
-  currentList.forEach((v, idx) => {
-    const tile = document.createElement("div");
-    tile.className = "tile";
-    tile.innerHTML = `
-      <img src="https://img.youtube.com/vi/${v.id}/hqdefault.jpg" alt="">
-      <div class="tileTitle">${cleanTitle(v.title) || "Untitled"}</div>
-    `;
-    tile.addEventListener("click", () => {
-      currentIndex = idx;
-      setNowPlaying();
-      playVideo(v.id);
-    });
-    libraryEl.appendChild(tile);
-  });
-}
-
-async function loadCatalog(){
-  const res = await fetch(CATALOG_URL, { cache: "no-store" });
-  const data = await res.json();
-  fullCatalog = (Array.isArray(data) ? data : []).filter(x => x && x.id);
-  buildFilters();
-  applyFilter();
-}
-
-loadCatalog().catch(err => {
-  console.error(err);
-  libraryEl.innerHTML = `<div style="padding:14px;color:rgba(255,255,255,.8)">Could not load catalog. Put <b>smv_catalog_clean.json</b> in the same folder.</div>`;
+recordBtn.addEventListener("click", togglePlayback);
+playBtn.addEventListener("click", togglePlayback);
+saveStationBtn.addEventListener("click", createStationFromForm);
+playlistInputEl.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") createStationFromForm();
 });
+titleInputEl.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") createStationFromForm();
+});
+descriptionInputEl.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") createStationFromForm();
+});
+
+renderStations();
+updateNowPlayingPanel(stations.find((station) => station.id === activeStationId) || null);
+
+if (stations[0]?.playlistId) {
+  activeStationId = stations[0].id;
+  pendingPlaylistId = stations[0].playlistId;
+} else {
+  showStatus("Paste an sMV playlist URL to replace the starter template and make the jukebox live.", false);
+}
