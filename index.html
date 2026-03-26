@@ -3,273 +3,225 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>sMV Digital Jukebox</title>
+  <title>sMV Playlist Jukebox</title>
   <style>
     :root{
-      --bg:#0a0b0f;
+      --bg:#090b12;
       --panel:rgba(255,255,255,.06);
-      --text:#f3f5ff;
-      --muted:rgba(255,255,255,.70);
-      --muted2:rgba(255,255,255,.55);
-      --stroke:rgba(255,255,255,.14);
-      --radius:18px;
-      --gap:16px;
+      --panel-strong:rgba(255,255,255,.10);
+      --text:#f4f7ff;
+      --muted:rgba(255,255,255,.72);
+      --stroke:rgba(255,255,255,.12);
+      --accent:#ff4fd8;
+      --accent-2:#62e8ff;
+      --good:#79f2b6;
+      --shadow:0 24px 60px rgba(0,0,0,.45);
+      --radius:22px;
+      --gap:18px;
     }
     *{box-sizing:border-box}
+    html,body{height:100%}
     body{
       margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: radial-gradient(1200px 700px at 20% 0%, rgba(120,80,255,.18), transparent 60%),
-                  radial-gradient(900px 600px at 70% 20%, rgba(0,220,255,.12), transparent 55%),
-                  var(--bg);
       color:var(--text);
-    }
-    .wrap{max-width:1280px; margin:0 auto; padding:18px;}
-    .banner{
-      position:relative;
-      display:flex;
-      align-items:center;
-      gap:18px;
-      padding:18px 18px;
-      border-radius:24px;
-      background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
-      border:1px solid var(--stroke);
-      overflow:hidden;
-    }
-    .banner:before{
-      content:"";
-      position:absolute; inset:-2px;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        radial-gradient(500px 240px at 15% 25%, rgba(255,255,255,.12), transparent 60%),
-        radial-gradient(500px 240px at 60% 70%, rgba(255,255,255,.10), transparent 65%);
-      pointer-events:none;
+        radial-gradient(900px 550px at 10% 0%, rgba(255,79,216,.18), transparent 60%),
+        radial-gradient(850px 520px at 100% 10%, rgba(98,232,255,.14), transparent 58%),
+        var(--bg);
     }
-    .titleBlock{position:relative; z-index:1; min-width:0; flex:1;}
-    .titleLine{
-      display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
-    }
-    .djTitle{
-      font-size:36px; font-weight:900; letter-spacing:.6px;
-      line-height:1;
-    }
-    .waveStrip{
-      height:22px;
-      flex:1;
-      min-width:240px;
-      border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.10);
+    a{color:inherit}
+    button,input{font:inherit}
+    .wrap{max-width:1380px;margin:0 auto;padding:20px}
+    .hero{
+      display:grid;
+      grid-template-columns:minmax(0,1.2fr) 280px;
+      gap:var(--gap);
+      padding:22px;
+      border-radius:28px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(145deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+      box-shadow:var(--shadow);
       overflow:hidden;
       position:relative;
     }
-    .bars{
-      position:absolute; inset:0;
-      display:flex; align-items:flex-end;
-      gap:4px;
-      padding:4px 10px;
-      width:max-content;
-      animation: drift 2.2s linear infinite;
+    .hero:before{
+      content:"";
+      position:absolute; inset:-15% auto auto -10%;
+      width:420px; height:420px; border-radius:50%;
+      background:radial-gradient(circle, rgba(255,255,255,.14), transparent 65%);
+      pointer-events:none;
+      filter:blur(12px);
     }
-    @keyframes drift{
-      from{ transform: translateX(-28%); }
-      to{ transform: translateX(0%); }
+    .heroCopy{position:relative;z-index:1}
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+      color:var(--muted);font-size:13px;font-weight:700;letter-spacing:.03em;
     }
-    .bar{
-      width:6px;
-      border-radius:8px;
-      background: rgba(255,255,255,.78);
-      height:10px;
-      opacity:.95;
+    h1{margin:14px 0 10px;font-size:clamp(34px,6vw,62px);line-height:.95}
+    .sub{margin:0;max-width:62ch;color:var(--muted);font-size:16px;line-height:1.55}
+    .heroPoints{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+    .point{
+      padding:14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)
     }
-    .hint{margin-top:8px; color:var(--muted); font-size:14px;}
-    .recordArea{position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px;}
+    .point strong{display:block;font-size:14px;margin-bottom:6px}
+    .point span{color:var(--muted);font-size:13px;line-height:1.4}
+    .recordCard{
+      position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+      padding:18px;border-radius:24px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18)
+    }
     .recordBtn{
-      width:150px; height:150px; border-radius:50%;
+      width:190px;height:190px;border-radius:50%;cursor:pointer;padding:0;position:relative;
       border:1px solid rgba(255,255,255,.18);
       background:
-        radial-gradient(circle at 30% 25%, rgba(255,255,255,.18), transparent 40%),
-        radial-gradient(circle at 50% 50%, rgba(0,0,0,.55), rgba(0,0,0,.92) 70%);
-      box-shadow: 0 18px 40px rgba(0,0,0,.45);
-      position:relative;
-      cursor:pointer;
-      padding:0;
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.16), transparent 35%),
+        radial-gradient(circle at 50% 50%, rgba(0,0,0,.55), rgba(0,0,0,.93) 70%);
+      box-shadow:0 16px 42px rgba(0,0,0,.45);
     }
-    .recordBtn:after{
-      content:"";
-      position:absolute; inset:10px;
-      border-radius:50%;
-      border:1px dashed rgba(255,255,255,.18);
-      opacity:.65;
-      pointer-events:none;
+    .recordBtn:before,.recordBtn:after{content:"";position:absolute;border-radius:50%;inset:12px;border:1px dashed rgba(255,255,255,.14)}
+    .recordBtn:after{inset:52px;border-style:solid;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18)}
+    .recordBtn.spinning{animation:spin 1.8s linear infinite}
+    .playerToggle,.secondaryBtn,.stationBtn,.saveBtn{
+      border:1px solid rgba(255,255,255,.14); color:var(--text); cursor:pointer;
+      background:rgba(255,255,255,.08); border-radius:14px; font-weight:800;
+      transition:transform .12s ease, background .12s ease, border-color .12s ease;
     }
-    .recordBtn.spinning{ animation: spin 1.6s linear infinite; }
-    @keyframes spin{ to{ transform: rotate(360deg); } }
-    .recordCenter{
-      position:absolute; inset:0; margin:auto;
-      width:58px; height:58px; border-radius:50%;
-      background: rgba(255,255,255,.12);
-      border:1px solid rgba(255,255,255,.22);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
+    .playerToggle:hover,.secondaryBtn:hover,.stationBtn:hover,.saveBtn:hover{transform:translateY(-1px);background:rgba(255,255,255,.13)}
+    .playerToggle{padding:12px 18px;min-width:150px}
+    .secondaryBtn{padding:12px 16px}
+    .layout{display:grid;grid-template-columns:minmax(0,1.5fr) 380px;gap:var(--gap);margin-top:18px}
+    .stack{display:grid;gap:var(--gap)}
+    .panel{
+      border:1px solid var(--stroke);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow);overflow:hidden
     }
-    .recordCenter img{width:100%; height:100%; object-fit:cover;}
-    .playBtn{
-      width:140px;
-      padding:10px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.16);
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-      font-weight:800;
-      cursor:pointer;
+    .panelHead{
+      display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08)
     }
-    .playBtn:hover{background: rgba(255,255,255,.12);}
-    .filters{
-      margin-top:14px;
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
+    .panelHead h2,.panelHead h3{margin:0;font-size:18px}
+    .panelHead p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+    .playerWrap{background:#000;aspect-ratio:16/9}
+    #player{width:100%;height:100%}
+    .metaGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px 18px 18px}
+    .metaCard{padding:14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+    .metaCard label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+    .metaCard strong,.metaCard a{font-size:14px;font-weight:800;word-break:break-word}
+    .builder{padding:18px;display:grid;gap:14px}
+    .builderIntro{color:var(--muted);font-size:14px;line-height:1.55}
+    .fieldGrid{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:12px}
+    .input,.select{
+      width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:var(--text)
     }
-    .chip{
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding:9px 12px;
-      border-radius:999px;
-      cursor:pointer;
-      font-weight:750;
-      font-size:13px;
+    .saveRow{display:flex;gap:10px;flex-wrap:wrap}
+    .saveBtn{padding:12px 18px;background:linear-gradient(135deg, rgba(255,79,216,.24), rgba(98,232,255,.18))}
+    .helpList{margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.55}
+    .stationList{padding:16px;display:grid;gap:12px;max-height:760px;overflow:auto}
+    .stationBtn{
+      width:100%;text-align:left;padding:16px;border-radius:18px;display:grid;gap:10px
     }
-    .chip.active{ background: rgba(255,255,255,.14); }
-
-    .pageGrid{
-      margin-top:16px;
-      display:grid;
-      grid-template-columns: minmax(0, 1fr) 360px 300px;
-      gap: var(--gap);
-      align-items:start;
-    }
-    .leftCol{min-width:0;}
-    .playerWrap{
-      border-radius: var(--radius);
-      border:1px solid rgba(255,255,255,.12);
-      background: #000;
-      overflow:hidden;
-      height: 620px;
-      position:relative;
-    }
-    #player, iframe{ width:100%; height:100%; border:0; display:block; }
-
-    .bottomAd{
-      margin-top: var(--gap);
-      height: 160px;
-      border-radius: var(--radius);
-      border:1px solid rgba(255,255,255,.12);
-      background: var(--panel);
-      overflow:hidden;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-    .bottomAd img{width:100%; height:100%; object-fit:cover;}
-
-    .libraryCol{
-      border-radius: var(--radius);
-      border:1px solid rgba(255,255,255,.12);
-      background: var(--panel);
-      overflow:hidden;
-    }
-    .libHeader{
-      padding:12px 12px;
-      border-bottom:1px solid rgba(255,255,255,.10);
-      display:flex; align-items:center; justify-content:space-between;
-      font-weight:900;
-    }
-    .nowPlaying{ font-weight:700; color: var(--muted2); font-size:12px; margin-left:10px; }
-    .libraryList{
-      height: 620px;
-      overflow:auto;
-      padding:10px;
-    }
-    .tile{
-      display:flex;
-      gap:10px;
-      padding:9px;
-      border-radius:14px;
-      cursor:pointer;
-      border:1px solid transparent;
-    }
-    .tile:hover{ background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.10); }
-    .tile img{ width:124px; height:70px; object-fit:cover; border-radius:12px; flex:0 0 auto; }
-    .tileTitle{ font-weight:800; font-size:13px; line-height:1.25; }
-
-    .adsCol{ display:flex; flex-direction:column; gap: var(--gap); }
-    .adBox{
-      height: 300px;
-      border-radius: var(--radius);
-      border:1px solid rgba(255,255,255,.12);
-      background: var(--panel);
-      overflow:hidden;
-    }
-    .adBox img{ width:100%; height:100%; object-fit:cover; display:block;}
-
-    @media (max-width: 1180px){
-      .pageGrid{ grid-template-columns: 1fr; }
-      .playerWrap{ height: 460px; }
-      .libraryList{ height: 360px; }
-      .adsCol{ flex-direction:row; }
-      .adBox{ flex:1; height: 180px; }
+    .stationBtn.active{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.28)}
+    .stationTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .stationTitle{font-size:16px;font-weight:900}
+    .stationDesc{color:var(--muted);font-size:13px;line-height:1.45}
+    .stationMeta{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:700;color:var(--muted)}
+    .empty{padding:20px 18px;color:var(--muted);font-size:14px;line-height:1.55}
+    .inlineActions{display:flex;gap:10px;flex-wrap:wrap}
+    .status{color:var(--good);font-size:13px;font-weight:700;min-height:1.25em}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:1100px){
+      .hero,.layout,.fieldGrid{grid-template-columns:1fr}
+      .heroPoints,.metaGrid{grid-template-columns:1fr}
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="banner">
-      <div class="titleBlock">
-        <div class="titleLine">
-          <div class="djTitle">sMV Digital Jukebox</div>
-          <div class="waveStrip" aria-hidden="true">
-            <div class="bars" id="bars"></div>
-          </div>
+    <header class="hero">
+      <div class="heroCopy">
+        <div class="eyebrow">Playlist-first rebuild for sMV</div>
+        <h1>sMV Playlist Jukebox</h1>
+        <p class="sub">This version drops the big hand-built video catalog and runs directly from YouTube playlist links. Paste an sMV playlist URL, save it as a station, and the jukebox loads the playlist straight into the YouTube player.</p>
+        <div class="heroPoints">
+          <div class="point"><strong>No catalog JSON required</strong><span>The player loads YouTube playlist IDs directly instead of maintaining a custom database of every track.</span></div>
+          <div class="point"><strong>Built around playlists</strong><span>Each saved station points at an sMV playlist, so the channel can keep curating in YouTube.</span></div>
+          <div class="point"><strong>Lightweight workflow</strong><span>To add music later, just copy a playlist link from the sMV playlists page and save it here.</span></div>
         </div>
-        <div class="hint">Start and Stop video - click on record player.</div>
       </div>
-
-      <div class="recordArea">
+      <div class="recordCard">
         <button class="recordBtn" id="recordBtn" title="Play / Pause"></button>
-        <button class="playBtn" id="playBtn">Play</button>
+        <button class="playerToggle" id="playBtn">Play</button>
       </div>
     </header>
 
-    <div class="filters" id="filters"></div>
+    <main class="layout">
+      <section class="stack">
+        <article class="panel">
+          <div class="panelHead">
+            <div>
+              <h2>Now spinning</h2>
+              <p>The playlist embed is the new engine. Click a saved station on the right, or paste a fresh playlist below.</p>
+            </div>
+            <div class="inlineActions">
+              <a class="secondaryBtn" href="https://www.youtube.com/@sMVshortMusicVideos/playlists" target="_blank" rel="noreferrer">Open sMV playlists</a>
+            </div>
+          </div>
+          <div class="playerWrap">
+            <div id="player"></div>
+          </div>
+          <div class="metaGrid">
+            <div class="metaCard">
+              <label>Station</label>
+              <strong id="activeStationName">Select a playlist station</strong>
+            </div>
+            <div class="metaCard">
+              <label>Playlist ID</label>
+              <strong id="activePlaylistId">—</strong>
+            </div>
+            <div class="metaCard">
+              <label>Source</label>
+              <a id="activePlaylistUrl" href="https://www.youtube.com/@sMVshortMusicVideos/playlists" target="_blank" rel="noreferrer">Open source playlist</a>
+            </div>
+          </div>
+        </article>
 
-    <main class="pageGrid">
-      <section class="leftCol">
-        <div class="playerWrap">
-          <div id="player"></div>
-        </div>
-        <div class="bottomAd">
-          <a href="https://www.youtube.com/@sMVshortMusicVideos" target="_blank">
-    <img src="smv ad.png" alt="sMV Youtube Channel" class="ad-img wide">
-  </a>
-        </div>
+        <article class="panel">
+          <div class="panelHead">
+            <div>
+              <h3>Add a playlist station</h3>
+              <p>Paste any YouTube playlist URL from the sMV channel, or just the playlist ID if you already have it.</p>
+            </div>
+          </div>
+          <div class="builder">
+            <div class="builderIntro">This lets the jukebox stay simple: YouTube handles playlist ordering, while this app only stores a small list of saved stations in your browser.</div>
+            <div class="fieldGrid">
+              <input class="input" id="playlistInput" type="text" placeholder="Paste a playlist URL or ID, e.g. https://www.youtube.com/playlist?list=PL..." />
+              <input class="input" id="titleInput" type="text" placeholder="Station name" />
+            </div>
+            <div class="fieldGrid">
+              <input class="input" id="descriptionInput" type="text" placeholder="Optional description" />
+              <button class="saveBtn" id="saveStationBtn">Save station</button>
+            </div>
+            <div class="status" id="statusMessage"></div>
+            <ul class="helpList">
+              <li>Use the <strong>Open sMV playlists</strong> button to browse the channel and copy a playlist link.</li>
+              <li>When you save a station, it is stored in <strong>localStorage</strong> so the setup stays lightweight.</li>
+              <li>The YouTube playlist remains the single source of truth, so new videos can be added on YouTube without rebuilding a JSON catalog.</li>
+            </ul>
+          </div>
+        </article>
       </section>
 
-      <aside class="libraryCol">
-        <div class="libHeader">
-          <span>Library <span class="nowPlaying" id="nowPlaying"></span></span>
+      <aside class="panel">
+        <div class="panelHead">
+          <div>
+            <h3>Saved playlist stations</h3>
+            <p>Start with the built-in examples, then replace or extend them with the actual sMV playlists you want to feature.</p>
+          </div>
         </div>
-        <div class="libraryList" id="library"></div>
-      </aside>
-
-      <aside class="adsCol">
-        <div class="adBox"><a href="https://smv-short-music-videos.printify.me/" target="_blank">
-    <img src="love the merch.jpg" alt="sMV Store" class="ad-img wide">
-  </a></div>
-        <div class="adBox"><a href="https://thsulli-met.github.io/karaoke-star/" target="_blank">
-    <img src="Karaoke starad.png" alt="Karaoke Star Ad" class="ad-img wide">
-  </a></div>
+        <div class="stationList" id="stationList"></div>
+        <div class="empty" id="emptyState" hidden>No playlist stations saved yet. Add one from the sMV playlists page to start the jukebox.</div>
       </aside>
     </main>
   </div>
